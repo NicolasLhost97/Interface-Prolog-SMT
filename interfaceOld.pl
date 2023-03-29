@@ -10,27 +10,27 @@
 
 
 % USE OF SOLVER
-% smt_solve_z3 and smt_solve_cvc4 to use a specific solver to resolve the script
+% old_smt_solve_z3 and old_smt_solve_cvc4 to use a specific solver to resolve the script
 % They retrieve the new script with new constraints from the model if asked
 
     % Utilisation du solver Z3 pour la résolution du Script
-    smt_solve_z3(Script, NewScript) :-
-        smt_solve(Script, 'z3', SolverOutput),
-        smt_solve_create_new_script(Script, SolverOutput, NewScript).
+    old_smt_solve_z3(Script, NewScript) :-
+        old_smt_solve(Script, 'z3', SolverOutput),
+        old_smt_solve_create_new_script(Script, SolverOutput, NewScript).
 
     % Utilisation du solver Z3 pour la résolution du Script
-    smt_solve_cvc4(Script, NewScript) :-
+    old_smt_solve_cvc4(Script, NewScript) :-
         % Ajout option produce-models pour afficher le model (non natif avec CVC4)
         % Ajout d'un logique par défaut pour éviter des warning dans la réponse
-        smt_set_option('produce-models', 'true', ModelOption),
-        smt_set_option('incremental', 'true', IncrementalOption),
-        smt_set_option('fmf-bound', 'true', BoundOption),
-        smt_set_logic('ALL', AllLogic),
-        smt_solve([AllLogic,ModelOption,IncrementalOption,BoundOption|Script], 'cvc4', SolverOutput),
-        smt_solve_create_new_script(Script, SolverOutput, NewScript).
+        old_smt_set_option('produce-models', 'true', ModelOption),
+        old_smt_set_option('incremental', 'true', IncrementalOption),
+        old_smt_set_option('fmf-bound', 'true', BoundOption),
+        old_smt_set_logic('ALL', AllLogic),
+        old_smt_solve([AllLogic,ModelOption,IncrementalOption,BoundOption|Script], 'cvc4', SolverOutput),
+        old_smt_solve_create_new_script(Script, SolverOutput, NewScript).
 
     % Résolution du Script et récupération de l'Output du Solver choisi
-    smt_solve(Script, Solver, Output) :-
+    old_smt_solve(Script, Solver, Output) :-
         % Ecrire le nouveau code dans un fichier et le lancer avec Z3
         smtlib_write_to_file('temp.smt2', list(Script)),
         process_create(path(Solver), ['temp.smt2'], [process(PID), stdout(pipe(Out))]),
@@ -48,7 +48,7 @@
 
     % Crée un NewScript à partir du Script et de l'output du solver correspondant avec
     % récupération des données du modele pour créer de nouvelles contraintes
-    smt_solve_create_new_script(Script, SolverOutput, NewScript) :-
+    old_smt_solve_create_new_script(Script, SolverOutput, NewScript) :-
         smtlib_read_expressions('result.smt2', Expressions),
         write('\n\n\n-----------------------\n\n\n'),
         extract_funs_from_model_to_constraints(Expressions, ModelConstraints),
@@ -60,12 +60,12 @@
 % UTILS FOR USAGE OF SMT FILES
 
     % Write the script into a file
-    smt_write_file(File, Script) :-
+    old_smt_write_file(File, Script) :-
         % ecrire dans le fichier file
         smtlib_write_to_file(File, list(Script)).
 
     % Load a file to add at the end of an existing script
-    smt_load_file(File, Script, NewScript) :-
+    old_smt_load_file(File, Script, NewScript) :-
         % lecture du Fichier
         smtlib_read_script(File, list(SMTLines)),
         % rajouter le code Prolog
@@ -73,9 +73,9 @@
 
     % Directly solve a file
     % Use Z3 by default (can be change for 'cvc4' or other supported)
-    smt_solve_file(File) :-
-        smt_load_file(File, [], Script),
-        smt_solve(Script, 'z3', _).
+    old_smt_solve_file(File) :-
+        old_smt_load_file(File, [], Script),
+        old_smt_solve(Script, 'z3', _).
 
     % Read a file and transform it to Atom
     read_file(File, Content) :-
@@ -90,148 +90,148 @@
 % SCRIPTS PREDICATES
 
     % Prédicat pour parser du SMT-LIB2
-    smt_parse(Expr, Command) :-
+    old_smt_parse(Expr, Command) :-
         string_chars(Expr,CharsExpr),
         smtlib_parse_script(CharsExpr, list([Command])).
 
     % Prédicat pour générer une commande "assert"
-    smt_assert(Expr, Command) :-
+    old_smt_assert(Expr, Command) :-
         Command = [reserved('assert'), Expr].
 
     % Prédicat pour générer une commande "check-sat"
-    smt_check_sat(Command) :-
+    old_smt_check_sat(Command) :-
         Command = [reserved('check-sat')].
 
     % Prédicat pour générer une commande "check-sat-assuming"
-    smt_check_sat_assuming(PropLiterals, Command) :-
+    old_smt_check_sat_assuming(PropLiterals, Command) :-
         Command = [reserved('check-sat-assuming'), PropLiterals].
 
     % Prédicat pour générer une commande "declare-const"
-    % Example: smt_declare_fun('w', 'Int', W)
-    smt_declare_const(Name, Sort, Command) :-
+    % Example: old_smt_declare_fun('w', 'Int', W)
+    old_smt_declare_const(Name, Sort, Command) :-
         Command = [reserved('declare-const'), symbol(Name), symbol(Sort)].
     
     % Prédicat pour générer une commande "declare-datatype"
-    smt_declare_datatype(Name, DatatypeDec, Command) :-
+    old_smt_declare_datatype(Name, DatatypeDec, Command) :-
         Command = [reserved('declare-datatype'), symbol(Name), DatatypeDec].
     
     % Prédicat pour générer une commande "declare-datatypes"
-    smt_declare_datatypes(SortDeclarations, DatatypeDeclarations, Command) :-
+    old_smt_declare_datatypes(SortDeclarations, DatatypeDeclarations, Command) :-
         Command = [reserved('declare-datatypes'), SortDeclarations, DatatypeDeclarations].
   
     % Prédicat pour générer une commande "declare-fun"
-    % Example: smt_declare_fun('f', ['Int','Int'], 'Int',F)
-    smt_declare_fun(Name, Args, ReturnType, Command) :-
-        maplist(smt_symbol, Args, SymbolArgs),
+    % Example: old_smt_declare_fun('f', ['Int','Int'], 'Int',F)
+    old_smt_declare_fun(Name, Args, ReturnType, Command) :-
+        maplist(old_smt_symbol, Args, SymbolArgs),
         Command = [reserved('declare-fun'), symbol(Name), SymbolArgs, symbol(ReturnType)].
     
     % Prédicat pour générer une commande "declare-sort"
-    smt_declare_sort(Name, Arity, Command) :-
+    old_smt_declare_sort(Name, Arity, Command) :-
         Command = [reserved('declare-sort'), symbol(Name), numeral(Arity)].
     
     % Prédicat pour générer une commande "define-fun"
-    smt_define_fun(Name, Args, ReturnType, Body, Command) :-
+    old_smt_define_fun(Name, Args, ReturnType, Body, Command) :-
         Command = [reserved('define-fun'), symbol(Name), Args, symbol(ReturnType), Body].
 
     % Prédicat pour générer une commande "define-fun-rec"
-    smt_define_fun_rec(Name, Args, ReturnType, Body, Command) :-
+    old_smt_define_fun_rec(Name, Args, ReturnType, Body, Command) :-
         Command = [reserved('define-fun-rec'), symbol(Name), Args, symbol(ReturnType), Body].
 
     % Prédicat pour générer une commande "define-funs-rec"
-    smt_define_funs_rec(FunctionDecs, Bodies, Command) :-
+    old_smt_define_funs_rec(FunctionDecs, Bodies, Command) :-
         Command = [reserved('define-funs-rec'), FunctionDecs, Bodies].
     
     % Prédicat pour générer une commande "define-sort"
-    smt_define_sort(Name, Args, Sort, Command) :-
+    old_smt_define_sort(Name, Args, Sort, Command) :-
         Command = [reserved('define-sort'), symbol(Name), Args, symbol(Sort)].   
     
     % Prédicat pour générer une commande "echo"
-    smt_echo(String, Command) :-
+    old_smt_echo(String, Command) :-
         Command = [reserved(echo), string(String)].
     
     % Prédicat pour générer une commande "exit"
-    smt_exit(Command) :-
+    old_smt_exit(Command) :-
         Command = [reserved(exit)].
     
     % Prédicat pour générer une commande "get-assertions"
-    smt_get_assertions(Command) :-
+    old_smt_get_assertions(Command) :-
         Command = [reserved('get-assertions')].
     
     % Prédicat pour générer une commande "get-assignment"
-    smt_get_assignment(Command) :-
+    old_smt_get_assignment(Command) :-
         Command = [reserved('get-assignment')].
     
     % Prédicat pour générer une commande "get-info"
-    smt_get_info(Info, Command) :-
+    old_smt_get_info(Info, Command) :-
         Command = [reserved('get-info'), keyword(Info)].
     
     % Prédicat pour générer une commande "get-model"
-    smt_get_model(Command) :-
+    old_smt_get_model(Command) :-
         Command = [reserved('get-model')].
 
     % Prédicat pour générer une commande "get-model" avec extraction et convertir en contraintes 
-    smt_get_model_to_constraint_for(Symbols,list(Command)) :-
+    old_smt_get_model_to_constraint_for(Symbols,list(Command)) :-
         list_symbols_to_string(Symbols,SymbolsString),
         string_concat('(echo "',SymbolsString, Begining),
         string_concat(Begining,'") ; symbols coverted to constraints', AllString),
-        smt_parse('(echo "model-to-constraint-start") ; used to indentify the model coverted to constraints', ModelStart),
-        smt_parse(AllString, ConstraintSymbols),
-        smt_parse('(echo "model-to-constraint-end") ; used to indentify the model coverted to constraints', ModelEnd),
+        old_smt_parse('(echo "model-to-constraint-start") ; used to indentify the model coverted to constraints', ModelStart),
+        old_smt_parse(AllString, ConstraintSymbols),
+        old_smt_parse('(echo "model-to-constraint-end") ; used to indentify the model coverted to constraints', ModelEnd),
         Command = [ModelStart,ConstraintSymbols,[reserved('get-model')],ModelEnd].
     
     % Prédicat pour générer une commande "get-option"
-    smt_get_option(Option, Command) :-
+    old_smt_get_option(Option, Command) :-
         Command = [reserved('get-option'), keyword(Option)].
     
     % Prédicat pour générer une commande "get-proof"
-    smt_get_proof(Command) :-
+    old_smt_get_proof(Command) :-
         Command = [reserved('get-proof')].
     
     % Prédicat pour générer une commande "get-unsat-assumptions"
-    smt_get_unsat_assumptions(Command) :-
+    old_smt_get_unsat_assumptions(Command) :-
         Command = [reserved('get-unsat-assumptions')].
     
     % Prédicat pour générer une commande "get-unsat-core"
-    smt_get_unsat_core(Command) :-
+    old_smt_get_unsat_core(Command) :-
         Command = [reserved('get-unsat-core')].
     
     % Prédicat pour générer une commande "get-value"
-    smt_get_value(Terms, Command) :-
+    old_smt_get_value(Terms, Command) :-
         Command = [reserved('get-value'), Terms].
 
     % Prédicat pour générer une commande "push"
-    smt_push(N, Command) :-
+    old_smt_push(N, Command) :-
         Command = [reserved('push'), numeral(N)].
 
     % Prédicat pour générer une commande "pop"
-    smt_pop(N, Command) :-
+    old_smt_pop(N, Command) :-
         Command = [reserved('pop'), numeral(N)].
     
     % Prédicat pour générer une commande "reset"
-    smt_reset(Command) :-
+    old_smt_reset(Command) :-
         Command = [reserved(reset)].
     
     % Prédicat pour générer une commande "reset-assertions"
-    smt_reset_assertions(Command) :-
+    old_smt_reset_assertions(Command) :-
         Command = [reserved('reset-assertions')].
     
     % Prédicat pour générer une commande "set-info"
-    smt_set_info(Keyword, Value, Command) :-
+    old_smt_set_info(Keyword, Value, Command) :-
         Command = [reserved('set-info'), [keyword(Keyword), symbol(Value)]].
 
     % Prédicat pour générer une commande "set-logic"
-    smt_set_logic(Logic, Command) :-
+    old_smt_set_logic(Logic, Command) :-
         Command = [reserved('set-logic'), symbol(Logic)].
     
     % Prédicat pour générer une commande "set-option"
-    smt_set_option(Option, Bool, Command) :-
+    old_smt_set_option(Option, Bool, Command) :-
         Command = [reserved('set-option'), keyword(Option), symbol(Bool)].
 
 
 
     % Transformation en symbol
-    smt_symbol(X, symbol(S)) :- atom(X), !, S = X.
-    smt_symbol(X, X).
+    old_smt_symbol(X, symbol(S)) :- atom(X), !, S = X.
+    old_smt_symbol(X, X).
 
 
 
@@ -274,10 +274,10 @@
         struct_to_sexp(B, SB).
 
     % Prédicat pour ajouter une assertion SMT-LIB2 à partir d'une expression courrante
-    smt_assert_2(Expr, Command) :-
+    old_smt_assert_2(Expr, Command) :-
         expr_to_struct(Expr, Struct),
         struct_to_sexp(Struct, SExpr),
-        smt_assert(SExpr, Command).
+        old_smt_assert(SExpr, Command).
 
 
 

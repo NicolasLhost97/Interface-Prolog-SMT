@@ -4,6 +4,9 @@
 :- dynamic solve_counter/1.
 solve_counter(0).
 
+:- dynamic model_counter/1.
+model_counter(0).
+
 
 % Lancer swiprolog dans le terminal: swipl
 % Se déplacer dans le dossier: working_directory(CWD,'/Users/nicolaslhost/Prolog').
@@ -26,29 +29,28 @@ solve_counter(0).
 
     % Options to add at the begining to avoid warning from CVC4
     smt_cvc4_options(Stream) :-
-        smt_set_option('produce-models', 'true', Stream),
-        smt_set_option('incremental', 'true', Stream),
-        smt_set_option('fmf-bound', 'true', Stream),
-        smt_set_logic('ALL', Stream).
+        smt_set_logic('ALL', Stream),
+        smt_set_option('produce-models', 'true', Stream).
 
     % Utilisation du solver Z3 pour la résolution du Script
     smt_solve_z3(Stream) :-
-        smt_solve(Stream, 'z3 ').
+        smt_solve(Stream, 'z3 ', '').
 
     % Utilisation du solver Z3 pour la résolution du Script
     smt_solve_cvc4(Stream) :-
-        smt_solve(Stream, 'cvc4 ').
-
+        smt_solve(Stream, 'cvc4 ', ' --incremental --fmf-bound ').
+        
     % Résolution du Script et avec le Solver choisi
-    smt_solve(Stream, Solver) :-
+    smt_solve(Stream, Solver, Options) :-
         stream_property(Stream, file_name(FileName)),
         flush_output(Stream),
         % Create the command to solve and save the output into a file
-        sub_atom(FileName, 0, _, 5, Name), 
+        sub_atom(FileName, 0, _, 5, Name),
         atom_concat(Name, '.result.smt2', ResultFile),
         atom_concat(' > ', ResultFile, ToResultFile),
         atom_concat(FileName, ToResultFile, Command),
-        atom_concat(Solver, Command, ShellCommand),
+        atom_concat(Solver, Options, SolverOptions),
+        atom_concat(SolverOptions, Command, ShellCommand),
         % Use of shell (not really ISO-Prolog)
         shell(ShellCommand),
         % Get the ouput
@@ -56,14 +58,19 @@ solve_counter(0).
         % Show result in terminal
         write(Output),
         smtlib_read_expressions(ResultFile, Expressions),
-        write('\n\n\n-----------------------\n\n\n'),
+        write('\n\n-----------------------\n\n'),
         write(Expressions),
         extract_funs_from_model_to_constraints(Expressions, ModelConstraints),
         % write('\n\n Constraints'),
         % write(ModelConstraints),
-        smtlib_write_to_stream(Stream, list(ModelConstraints)).
+        smtlib_write_to_stream(Stream, list(ModelConstraints)),
+        % Set the solve_counter to be equal to the model_counter
+        model_counter(ModelCounter),
+        retractall(solve_counter(_)),
+        asserta(solve_counter(ModelCounter)).
         % check_continue_conditions(Expressions).
-          
+
+
 
 
 % UTILS FOR USAGE OF SMT FILES
@@ -221,25 +228,28 @@ solve_counter(0).
     smt_get_model(Stream) :-
         Command = [reserved('get-model')],
         smtlib_write_to_stream(Stream, Command).
-
-    % Prédicat pour générer une commande "get-model" avec extraction et convertir en contraintes 
-    smt_get_model_to_constraint_for(Symbols,Stream) :-
-        % Increment the solve_counter
-        retract(solve_counter(Counter)),
+    
+    smt_get_model_to_constraint_for(Symbols, Stream) :-
+        % Increment the model_counter
+        retract(model_counter(Counter)),
         NewCounter is Counter + 1,
-        asserta(solve_counter(NewCounter)),
-        
+        asserta(model_counter(NewCounter)),
+    
+        atom_concat('(echo "model-to-constraint-start-', NewCounter, TempStartTag),
+        atom_concat(TempStartTag, '") ; used to indentify the model coverted to constraints', FinalStartTag),
+        smt_parse(FinalStartTag, Stream),
+
         list_symbols_to_string(Symbols, SymbolsString),
         string_concat('(echo "', SymbolsString, Begining),
-        string_concat(Begining, '") ; symbols coverted to constraints', AllString),
-        smt_parse('(echo "model-to-constraint-start") ; used to indentify the model coverted to constraints', Stream),
-        smt_parse(AllString, Stream),
+        string_concat(Begining, '") ; symbols coverted to constraints', SymbolsCommand),
+        smt_parse(SymbolsCommand, Stream),
+
         smtlib_write_to_stream(Stream, [reserved('get-model')]),
-        smt_parse('(echo "model-to-constraint-end") ; used to indentify the model coverted to constraints', Stream),
-        string_concat('(echo "model-to-constraint-', NewCounter, StartModelToConstraintTag),
-        string_concat(StartModelToConstraintTag, '") ; ID of Model to constraint', ModelToConstraintTag),
-        smt_parse(ModelToConstraintTag, Stream).
-    
+
+        atom_concat('(echo "model-to-constraint-end-', NewCounter, TempEndTag),
+        atom_concat(TempEndTag, '") ; used to indentify the model coverted to constraints', FinalEndTag),
+        smt_parse(FinalEndTag, Stream).
+
     % Prédicat pour générer une commande "get-option"
     smt_get_option(Option, Stream) :-
         Command = [reserved('get-option'), keyword(Option)],
@@ -379,32 +389,82 @@ solve_counter(0).
 
 
 % MODEL EXTRACTION
+    is_model_to_constraint_start_tag_and_modelID(symbol(Atom), ModelID) :-
+        atom_concat('model-to-constraint-start-', ModelID, Atom).
+    is_model_to_constraint_start_tag_and_modelID(string(Atom), ModelID) :-
+        atom_concat('model-to-constraint-start-', ModelID, Atom).
+
+    is_model_to_constraint_end_tag(symbol(Atom)) :-
+        atom_concat('model-to-constraint-end-', _, Atom).
+    is_model_to_constraint_end_tag(string(Atom)) :-
+        atom_concat('model-to-constraint-end-', _, Atom).
+
+    get_funs_list([symbol('model') | Funs], Funs).
+    get_funs_list(Funs, Funs) :- \+ member(symbol('model'), Funs).
+
     extract_funs_from_model_to_constraints(Input, Result) :-
         extract_funs_from_model_to_constraints(Input, [], Result).
 
     extract_funs_from_model_to_constraints([], Accum, Accum).
-    extract_funs_from_model_to_constraints([symbol('model-to-constraint-start'), ConstraintSymbols, Funs, symbol('model-to-constraint-end') | Rest], Accum, Result) :-
-        funs_selection(ConstraintSymbols, Funs, SelectedFuns),
-        solve_counter(Counter),
-        transform_model_symbol_name(SelectedFuns, Counter, RenamedFuns),
-        create_constraints_assert(ConstraintSymbols, Asserts),
+    extract_funs_from_model_to_constraints([StartTag, ConstraintSymbolsRaw, Funs, EndTag | Rest], Accum, Result) :-
+        % Find Start Tag and Model ID
+        is_model_to_constraint_start_tag_and_modelID(StartTag, ModelID),
+        atom_to_number(ModelID, ModelIDNumber),
+        % Check the modelID to avoid retrieving constraints from an already processed model
+        solve_counter(SolveCounter),
+        ModelIDNumber > SolveCounter,
+        % Find End Tag
+        is_model_to_constraint_end_tag(EndTag),
+        % Retrieve all funs in the model
+        get_funs_list(Funs, FunsList),
+        % Constraint Symbols form normalization (difference w/ solver)
+        check_constraint_symbols_form(ConstraintSymbolsRaw, ConstraintSymbols),
+        % Select Funs which are wanted
+        funs_selection(ConstraintSymbols, FunsList, SelectedFuns),
+        % Transform names to add _from_model
+        transform_model_symbol_name(SelectedFuns, ModelID, RenamedFuns),
+        % Create Constraints
+        create_constraints_assert(ConstraintSymbols, ModelID, Asserts),
         % Unite Assert Constraints & Model Funs
         append(RenamedFuns, Asserts, ModelConstraints),
         append(Accum, ModelConstraints, NewAccum),
+        % Continue
         extract_funs_from_model_to_constraints(Rest, NewAccum, Result).
-    extract_funs_from_model_to_constraints([string('model-to-constraint-start'), ConstraintSymbols, [symbol('model') | Funs], string('model-to-constraint-end') | Rest], Accum, Result) :-
-        funs_selection(ConstraintSymbols, Funs, SelectedFuns),
-        solve_counter(Counter),
-        transform_model_symbol_name(SelectedFuns, Counter, RenamedFuns),
-        create_constraints_assert(ConstraintSymbols, Asserts),
-        % Unite Assert Constraints & Model Funs
-        append(RenamedFuns, Asserts, ModelConstraints),
-        append(Accum, ModelConstraints, NewAccum),
-        extract_funs_from_model_to_constraints(Rest, NewAccum, Result).
-    % Continuer la recherche en dehors de la zone d'extraction
+    extract_funs_from_model_to_constraints([StartTag | Rest], Accum, Result) :-
+        is_model_to_constraint_start_tag_and_modelID(StartTag, ModelID),
+        atom_to_number(ModelID, ModelIDNumber),
+        solve_counter(SolveCounter),
+        ModelIDNumber =< SolveCounter,
+        extract_funs_from_model_to_constraints(Rest, Accum, Result).
     extract_funs_from_model_to_constraints([_ | Rest], Accum, Result) :-
         extract_funs_from_model_to_constraints(Rest, Accum, Result).
 
+    % Check if form is[symbol(x),symbol(y)] otherwise normalise it
+    check_constraint_symbols_form(ConstraintSymbolsRaw, ConstraintSymbols) :-
+        (is_list_of_symbols(ConstraintSymbolsRaw) ->
+            ConstraintSymbols = ConstraintSymbolsRaw
+        ;
+            normalize_constraint_symbols(ConstraintSymbolsRaw, ConstraintSymbols)
+        ).
+    
+    is_list_of_symbols([]).
+    is_list_of_symbols([symbol(_) | Tail]) :-
+        is_list_of_symbols(Tail).
+    
+    % Normalise Constraint symbols to the form: [symbol(x),symbol(y)]
+    normalize_constraint_symbols(string(Str), Symbols) :-
+        atom_concat('(', WithoutLeftParenthesis, Str),
+        atom_concat(WithoutSpaces, ')', WithoutLeftParenthesis),
+        atomic_list_concat(Atoms, ' ', WithoutSpaces),
+        maplist(atom_to_symbol, Atoms, Symbols).
+    normalize_constraint_symbols(Symbols, Symbols) :-
+        is_list(Symbols),
+        maplist(symbol, Symbols).
+    
+    atom_to_symbol(Atom, symbol(Atom)).
+    
+    
+        
     % Selection des Funs voulues pour devenir des contraintes.
     funs_selection(_, [], []).
     funs_selection(ConstraintSymbols, [Fun | FunsRest], [Fun | SelectedRest]) :-
@@ -417,26 +477,25 @@ solve_counter(0).
         funs_selection(ConstraintSymbols, FunsRest, SelectedRest).
 
     % Create Constraints from model
-    create_constraints_assert(List, Constraints) :-
-        create_constraints_assert_helper(List, Disjuncts),
+    create_constraints_assert(List, ModelID, Constraints) :-
+        create_constraints_assert_helper(List, ModelID, Disjuncts),
         (Disjuncts = [] -> Constraints = [];
-            (Disjuncts = [SingleDisjunct] -> Constraints = [SingleDisjunct];
+            (Disjuncts = [SingleDisjunct] -> Constraints = [[reserved(assert), SingleDisjunct]];
                 Constraints = [[reserved(assert), [symbol(or) | Disjuncts]]])).
 
-    create_constraints_assert_helper([], []).
-    create_constraints_assert_helper([symbol(Var) | Rest], [[symbol(not), [symbol(=), symbol(Var), symbol(VarFromModel)]] | AssertionsRest]) :-
-        solve_counter(Counter),
+    create_constraints_assert_helper([], _, []).
+    create_constraints_assert_helper([symbol(Var) | Rest], ModelID, [[symbol(not), [symbol(=), symbol(Var), symbol(VarFromModel)]] | AssertionsRest]) :-
         atom_concat(Var, '_from_model_', TempVarFromModel),
-        atom_concat(TempVarFromModel, Counter, VarFromModel),
-        create_constraints_assert_helper(Rest, AssertionsRest).
-            
+        atom_concat(TempVarFromModel, ModelID, VarFromModel),
+        create_constraints_assert_helper(Rest, ModelID, AssertionsRest).
 
+            
     % Add "_from_model" to differentiate symbols from model
     transform_model_symbol_name([], _, []).
-    transform_model_symbol_name([[reserved('define-fun'), symbol(Var) | Rest] | Tail], Counter, [[reserved(define-fun), symbol(VarFromModel)| Rest] | TransformedTail]) :-
+    transform_model_symbol_name([[reserved('define-fun'), symbol(Var) | Rest] | Tail], ModelID, [[reserved(define-fun), symbol(VarFromModel)| Rest] | TransformedTail]) :-
         atom_concat(Var, '_from_model_', VarFromModelPartial),
-        atom_concat(VarFromModelPartial, Counter, VarFromModel),
-        transform_model_symbol_name(Tail, Counter, TransformedTail).
+        atom_concat(VarFromModelPartial, ModelID, VarFromModel),
+        transform_model_symbol_name(Tail, ModelID, TransformedTail).
 
 
     
@@ -461,4 +520,14 @@ solve_counter(0).
         string_concat('(', Rest, String),
         string_concat(SymbolsString, ')', Rest),
         read_term(SymbolsString, List, [syntax_errors(quiet)]).
+
+    % Convert an atom to a number
+    atom_to_number(Atom, Number) :-
+        atom_chars(Atom, Chars),
+        number_chars(Number, Chars).
+
+    % Convert a number to an atom
+    number_to_atom(Number, Atom) :-
+        number_chars(Number, Chars),
+        atom_chars(Atom, Chars).
 
