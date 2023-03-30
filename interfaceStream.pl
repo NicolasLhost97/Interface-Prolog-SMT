@@ -59,7 +59,6 @@ model_counter(0).
         write(Output),
         smtlib_read_expressions(ResultFile, Expressions),
         write('\n\n-----------------------\n\n'),
-        write(Expressions),
         extract_funs_from_model_to_constraints(Expressions, ModelConstraints),
         % write('\n\n Constraints'),
         % write(ModelConstraints),
@@ -67,13 +66,19 @@ model_counter(0).
         % Set the solve_counter to be equal to the model_counter
         model_counter(ModelCounter),
         retractall(solve_counter(_)),
-        asserta(solve_counter(ModelCounter)).
-        % check_continue_conditions(Expressions).
+        asserta(solve_counter(ModelCounter)),
+        write('\n'),
+        write(Expressions),
+        check_continue_conditions(Expressions).
 
 
 
 
 % UTILS FOR USAGE OF SMT FILES
+
+    smt_write_to_stream(Stream, Command):-
+        smtlib_write_to_stream(Stream, Command),
+        flush_output(Stream).
 
     % Write the script into a file
     smt_write_file(File, Script) :-
@@ -123,12 +128,12 @@ model_counter(0).
     smt_assert(Expr, Stream) :-
         convert_to_symbols(Expr, ExprSymbols),
         Command = [reserved('assert'), ExprSymbols],
-        smtlib_write_to_stream(Stream, Command).
+        smt_write_to_stream(Stream, Command).
 
     % Prédicat pour générer une commande "check-sat"
     smt_check_sat(Stream) :-
         Command = [reserved('check-sat')],
-        smtlib_write_to_stream(Stream, Command).
+        smt_write_to_stream(Stream, Command).
 
     % Prédicat pour générer une commande "check-sat" et vérifier si sat
     smt_check_sat_continue_if_sat(Stream) :-
@@ -144,90 +149,95 @@ model_counter(0).
     % Prédicat pour générer une commande "check-sat-assuming"
     smt_check_sat_assuming(PropLiterals, Stream) :-
         Command = [reserved('check-sat-assuming'), PropLiterals],
-        smtlib_write_to_stream(Stream, Command).
+        smt_write_to_stream(Stream, Command).
 
     % Prédicat pour générer une commande "declare-const"
     % Example: smt_declare_fun('w', 'Int', Stream)
     smt_declare_const(Name, Sort, Stream) :-
         Command = [reserved('declare-const'), symbol(Name), symbol(Sort)],
-        smtlib_write_to_stream(Stream, Command).
+        smt_write_to_stream(Stream, Command).
     
     % Prédicat pour générer une commande "declare-datatype"
     smt_declare_datatype(Name, DatatypeDec, Stream) :-
-        Command = [reserved('declare-datatype'), symbol(Name), DatatypeDec],
-        smtlib_write_to_stream(Stream, Command).
+        convert_to_symbols(DatatypeDec, DatatypeDecSymbols),
+        Command = [reserved('declare-datatype'), symbol(Name), DatatypeDecSymbols],
+        smt_write_to_stream(Stream, Command).
     
     % Prédicat pour générer une commande "declare-datatypes"
     smt_declare_datatypes(SortDeclarations, DatatypeDeclarations, Stream) :-
-        Command = [reserved('declare-datatypes'), SortDeclarations, DatatypeDeclarations],
-        smtlib_write_to_stream(Stream, Command).
+        convert_to_symbols(SortDeclarations, SortDeclarationsymbols),
+        convert_to_symbols(DatatypeDeclarations, DatatypeDeclarationsSymbols),
+        Command = [reserved('declare-datatypes'), SortDeclarationsymbols, DatatypeDeclarationsSymbols],
+        smt_write_to_stream(Stream, Command).
 
     % Prédicat pour générer une commande "declare-fun"
     % Example: smt_declare_fun('f', ['Int','Int'], 'Int', Stream)
     smt_declare_fun(Name, Args, ReturnType, Stream) :-
         convert_to_symbols(Args, ArgsSymbols),
         Command = [reserved('declare-fun'), symbol(Name), ArgsSymbols, symbol(ReturnType)],
-        smtlib_write_to_stream(Stream, Command).
+        smt_write_to_stream(Stream, Command).
     
     % Prédicat pour générer une commande "declare-sort"
     smt_declare_sort(Name, Arity, Stream) :-
         Command = [reserved('declare-sort'), symbol(Name), numeral(Arity)],
-        smtlib_write_to_stream(Stream, Command).
+        smt_write_to_stream(Stream, Command).
     
     % Prédicat pour générer une commande "define-fun"
     smt_define_fun(Name, Args, ReturnType, Body, Stream) :-
         convert_to_symbols(Args, ArgsSymbols),
         convert_to_symbols(Body, BodySymbols),
         Command = [reserved('define-fun'), symbol(Name), ArgsSymbols, symbol(ReturnType), BodySymbols],
-        smtlib_write_to_stream(Stream, Command).
+        smt_write_to_stream(Stream, Command).
 
     % Prédicat pour générer une commande "define-fun-rec"
     smt_define_fun_rec(Name, Args, ReturnType, Body, Stream) :-
         convert_to_symbols(Args, ArgsSymbols),
         convert_to_symbols(Body, BodySymbols),
         Command = [reserved('define-fun-rec'), symbol(Name), ArgsSymbols, symbol(ReturnType), BodySymbols],
-        smtlib_write_to_stream(Stream, Command).
+        smt_write_to_stream(Stream, Command).
 
     % Prédicat pour générer une commande "define-funs-rec"
     smt_define_funs_rec(FunctionDecs, Bodies, Stream) :-
-        Command = [reserved('define-funs-rec'), FunctionDecs, Bodies],
-        smtlib_write_to_stream(Stream, Command).
+        convert_to_symbols(FunctionDecs, FunctionDecsSymbols),
+        convert_to_symbols(Bodies, BodiesSymbols),
+        Command = [reserved('define-funs-rec'), FunctionDecsSymbols, BodiesSymbols],
+        smt_write_to_stream(Stream, Command).
     
     % Prédicat pour générer une commande "define-sort"
     smt_define_sort(Name, Args, Sort, Stream) :-
         convert_to_symbols(Args, ArgsSymbols),
         Command = [reserved('define-sort'), symbol(Name), ArgsSymbols, symbol(Sort)],
-        smtlib_write_to_stream(Stream, Command). 
+        smt_write_to_stream(Stream, Command). 
     
     % Prédicat pour générer une commande "echo"
     smt_echo(String, Stream) :-
         Command = [reserved(echo), string(String)],
-        smtlib_write_to_stream(Stream, Command).
+        smt_write_to_stream(Stream, Command).
     
     % Prédicat pour générer une commande "exit"
     smt_exit(Stream) :-
         Command = [reserved(exit)],
-        smtlib_write_to_stream(Stream, Command).
+        smt_write_to_stream(Stream, Command).
     
     % Prédicat pour générer une commande "get-assertions"
     smt_get_assertions(Stream) :-
         Command = [reserved('get-assertions')],
-        smtlib_write_to_stream(Stream, Command).
+        smt_write_to_stream(Stream, Command).
     
     % Prédicat pour générer une commande "get-assignment"
     smt_get_assignment(Stream) :-
         Command = [reserved('get-assignment')],
-        smtlib_write_to_stream(Stream, Command).
+        smt_write_to_stream(Stream, Command).
     
     % Prédicat pour générer une commande "get-info"
     smt_get_info(Info, Stream) :-
         Command = [reserved('get-info'), keyword(Info)],
-        smtlib_write_to_stream(Stream, Command).
+        smt_write_to_stream(Stream, Command).
     
     % Prédicat pour générer une commande "get-model"
     smt_get_model(Stream) :-
         Command = [reserved('get-model')],
-        smtlib_write_to_stream(Stream, Command).
+        smt_write_to_stream(Stream, Command).
     
     smt_get_model_to_constraint_for(Symbols, Stream) :-
         % Increment the model_counter
@@ -253,62 +263,62 @@ model_counter(0).
     % Prédicat pour générer une commande "get-option"
     smt_get_option(Option, Stream) :-
         Command = [reserved('get-option'), keyword(Option)],
-        smtlib_write_to_stream(Stream, Command).
+        smt_write_to_stream(Stream, Command).
     
     % Prédicat pour générer une commande "get-proof"
     smt_get_proof(Stream) :-
         Command = [reserved('get-proof')],
-        smtlib_write_to_stream(Stream, Command).
+        smt_write_to_stream(Stream, Command).
     
     % Prédicat pour générer une commande "get-unsat-assumptions"
     smt_get_unsat_assumptions(Stream) :-
         Command = [reserved('get-unsat-assumptions')],
-        smtlib_write_to_stream(Stream, Command).
+        smt_write_to_stream(Stream, Command).
     
     % Prédicat pour générer une commande "get-unsat-core"
     smt_get_unsat_core(Stream) :-
         Command = [reserved('get-unsat-core')],
-        smtlib_write_to_stream(Stream, Command).
+        smt_write_to_stream(Stream, Command).
     
     % Prédicat pour générer une commande "get-value"
     smt_get_value(Terms, Stream) :-
         Command = [reserved('get-value'), Terms],
-        smtlib_write_to_stream(Stream, Command).
+        smt_write_to_stream(Stream, Command).
 
     % Prédicat pour générer une commande "push"
     smt_push(N, Stream) :-
         Command = [reserved('push'), numeral(N)],
-        smtlib_write_to_stream(Stream, Command).
+        smt_write_to_stream(Stream, Command).
 
     % Prédicat pour générer une commande "pop"
     smt_pop(N, Stream) :-
         Command = [reserved('pop'), numeral(N)],
-        smtlib_write_to_stream(Stream, Command).
+        smt_write_to_stream(Stream, Command).
     
     % Prédicat pour générer une commande "reset"
     smt_reset(Stream) :-
         Command = [reserved(reset)],
-        smtlib_write_to_stream(Stream, Command).
+        smt_write_to_stream(Stream, Command).
     
     % Prédicat pour générer une commande "reset-assertions"
     smt_reset_assertions(Stream) :-
         Command = [reserved('reset-assertions')],
-        smtlib_write_to_stream(Stream, Command).
+        smt_write_to_stream(Stream, Command).
     
     % Prédicat pour générer une commande "set-info"
     smt_set_info(Keyword, Value, Stream) :-
-        Command = [reserved('set-info'), [keyword(Keyword), symbol(Value)]],
-        smtlib_write_to_stream(Stream, Command).
+        Command = [reserved('set-info'), keyword(Keyword), symbol(Value)],
+        smt_write_to_stream(Stream, Command).
 
     % Prédicat pour générer une commande "set-logic"
     smt_set_logic(Logic, Stream) :-
         Command = [reserved('set-logic'), symbol(Logic)],
-        smtlib_write_to_stream(Stream, Command).
+        smt_write_to_stream(Stream, Command).
     
     % Prédicat pour générer une commande "set-option"
     smt_set_option(Option, Bool, Stream) :-
         Command = [reserved('set-option'), keyword(Option), symbol(Bool)],
-        smtlib_write_to_stream(Stream, Command).
+        smt_write_to_stream(Stream, Command).
 
 
 
@@ -374,16 +384,26 @@ model_counter(0).
 
 % SAT OR UNSAT CHECKING
     check_continue_conditions([]).
-    check_continue_conditions([symbol('continue-if-sat'), symbol('sat') | Rest]) :-
-        check_continue_conditions(Rest).
-    check_continue_conditions([string('continue-if-sat'), symbol('sat') | Rest]) :-
-        check_continue_conditions(Rest).
-    check_continue_conditions([symbol('continue-if-unsat'), symbol('unsat') | Rest]) :-
-        check_continue_conditions(Rest).
-    check_continue_conditions([string('continue-if-unsat'), symbol('unsat') | Rest]) :-
-        check_continue_conditions(Rest).
+    check_continue_conditions([symbol('continue-if-sat'), symbol('unsat') | _]) :-
+        fail.
+    check_continue_conditions([symbol('continue-if-sat'), symbol('unknow') | _]) :-
+        fail.
+    check_continue_conditions([string('continue-if-sat'), symbol('unsat') | _]) :-
+        fail.
+    check_continue_conditions([string('continue-if-sat'), symbol('unknow') | _]) :-
+        fail.
+    check_continue_conditions([symbol('continue-if-unsat'), symbol('sat') | _]) :-
+        fail.
+    check_continue_conditions([symbol('continue-if-unsat'), symbol('unknow') | _]) :-
+        fail.
+    check_continue_conditions([string('continue-if-unsat'), symbol('sat') | _]) :-
+        fail.
+    check_continue_conditions([string('continue-if-unsat'), symbol('unknow') | _]) :-
+        fail.
     check_continue_conditions([_ | Rest]) :-
         check_continue_conditions(Rest).
+
+
 
 
 

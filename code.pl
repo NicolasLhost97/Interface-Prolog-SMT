@@ -1,6 +1,7 @@
 :- consult(interfaceStream).
 
 checkParsing() :-
+    smt_new('checkParsing',Script),
     smt_declare_fun('x', [], 'Int', X),
     smt_declare_fun('y', [], 'Int', Y),
     smt_declare_fun('f', ['Int','Int'], 'Int',F),
@@ -9,7 +10,8 @@ checkParsing() :-
     smt_get_model(Mod),
     smt_exit(Ex),
     Script = [X,Y,F,Parsed,Sat,Mod,Ex],
-    smt_solve_cvc4(Script).
+    smt_solve_cvc4(Script),
+    smt_close(Script).
     
 
 checkAllParsing() :-
@@ -24,7 +26,8 @@ checkAllParsing() :-
     smt_declare_sort('S', 0, Script),
     smt_declare_const('a', 'S', Script),
     smt_declare_const('x', 'Int', Script),
-    smt_declare_datatype(DT, [[cons, [hd, 'S'], [tl, DT]], [nil]], Script),
+    smt_declare_datatype('DT', [[cons, [hd, 'S'], [tl, 'DT']], [nil]], Script),
+    write('test'),
     smt_declare_datatypes([[list, 0]], [[[cons, [head, 'Int'], [tail, list]], [nil]]], Script),
     smt_set_logic('QF_LIA', Script),
     smt_define_sort('MyInt', [], 'Int', Script),
@@ -57,7 +60,7 @@ sudoku() :-
     %Récuperer les infos dans le sat, rajouter les contraintes et rechecker sat
 
 
-multiplesModelToConstraint():-
+multiplesModelToConstraintCVC4():-
     smt_new('multiplesModelToConstraint',Script),
     smt_cvc4_options(Script),
     %First Solve
@@ -75,31 +78,53 @@ multiplesModelToConstraint():-
     smt_get_model_to_constraint_for([x,y,z], Script),
     smt_solve_cvc4(Script),
     % Third Solve
-    % smt_check_sat(Script),
-    % smt_get_model_to_constraint_for([x,y], Script),
-    % smt_get_model_to_constraint_for([x,z], Script),
-    % smt_solve_cvc4(Script),
+    smt_check_sat(Script),
+    smt_get_model_to_constraint_for([x,y], Script),
+    smt_get_model_to_constraint_for([x,z], Script),
+    smt_solve_cvc4(Script),
     smt_close(Script).
 
-    multiplesModelToConstraintZ3():-
-        smt_new('multiplesModelToConstraint',Script),
-        %First Solve
-        smt_declare_fun('x', [], 'Int', Script),
-        smt_declare_fun('y', [], 'Int', Script),
-        smt_declare_fun('z', [], 'Int', Script),
-        smt_assert([>, x, y], Script),
-        smt_assert([>, y, z], Script),
-        smt_check_sat(Script),
-        smt_get_model_to_constraint_for([x,y], Script),
-        smt_get_model_to_constraint_for([z], Script),
-        smt_solve_z3(Script),
-        % Second Solve
-        smt_check_sat(Script),
-        smt_get_model_to_constraint_for([x,y,z], Script),
-        smt_solve_z3(Script),
-        % Third Solve
-        % smt_check_sat(Script),
-        % smt_get_model_to_constraint_for([x,y], Script),
-        % smt_get_model_to_constraint_for([x,z], Script),
-        % smt_solve_z3(Script),
-        smt_close(Script).
+multiplesModelToConstraintZ3():-
+    smt_new('multiplesModelToConstraint',Script),
+    %First Solve
+    smt_declare_fun('x', [], 'Int', Script),
+    smt_declare_fun('y', [], 'Int', Script),
+    smt_declare_fun('z', [], 'Int', Script),
+    smt_assert([>, x, y], Script),
+    smt_assert([>, y, z], Script),
+    smt_check_sat(Script),
+    smt_get_model_to_constraint_for([x,y], Script),
+    smt_get_model_to_constraint_for([z], Script),
+    smt_solve_z3(Script),
+    % Second Solve
+    smt_check_sat(Script),
+    smt_get_model_to_constraint_for([x,y,z], Script),
+    smt_solve_z3(Script),
+    % Third Solve
+    smt_check_sat(Script),
+    smt_get_model_to_constraint_for([x,y], Script),
+    smt_get_model_to_constraint_for([x,z], Script),
+    smt_solve_z3(Script),
+    smt_close(Script).
+
+testSat() :-
+    smt_new('testSat', Script),
+    smt_declare_fun('x', [], 'Int', Script),
+    smt_declare_fun('y', [], 'Int', Script),
+    % X and Y Greater than O
+    smt_assert([>, x, 0], Script),
+    smt_assert([>, y, 0], Script),
+    % Y Less than O
+    smt_assert([<, y, 10], Script),
+    % Y Greather than X
+    smt_assert([>, y, x], Script),
+    add_assert_greater_than(Script, 1, 20).
+
+add_assert_greater_than(_, Counter, Limit) :- Counter > Limit, !.
+add_assert_greater_than(Script, Counter, Limit) :-
+    smt_assert([>, x, Counter], Script),
+    smt_check_sat_continue_if_sat(Script),
+    smt_get_model(Script),
+    NewCounter is Counter + 1,
+    (smt_solve_z3(Script) -> add_assert_greater_than(Script, NewCounter, Limit) ; true).
+    
