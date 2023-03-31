@@ -109,8 +109,8 @@ multiplesModelToConstraintZ3():-
 
 testSat() :-
     smt_new('testSat', Script),
-    smt_declare_fun('x', [], 'Int', Script),
-    smt_declare_fun('y', [], 'Int', Script),
+    smt_declare_fun(x, [], 'Int', Script),
+    smt_declare_fun(y, [], 'Int', Script),
     % X and Y Greater than O
     smt_assert([>, x, 0], Script),
     smt_assert([>, y, 0], Script),
@@ -118,13 +118,35 @@ testSat() :-
     smt_assert([<, y, 10], Script),
     % Y Greather than X
     smt_assert([>, y, x], Script),
-    add_assert_greater_than(Script, 1, 20).
 
-add_assert_greater_than(_, Counter, Limit) :- Counter > Limit, !.
-add_assert_greater_than(Script, Counter, Limit) :-
-    smt_assert([>, x, Counter], Script),
-    smt_check_sat_continue_if_sat(Script),
-    smt_get_model(Script),
-    NewCounter is Counter + 1,
-    (smt_solve_z3(Script) -> add_assert_greater_than(Script, NewCounter, Limit) ; true).
+    get_model_value('x', X, Script),
+    get_model_value('y', Y, Script),
+    writeln('\n\n\n\n'),
+    writeln(['x = ', X, ' y = ', Y]),
+    writeln('\n\n\n\n'),
+    smt_exit(Script),
+    smt_solve_z3(Script).
+
+    % add_assert_greater_than(Script, 1, 20).
+
+    add_assert_greater_than(_, Counter, Limit) :- Counter > Limit, !.
+    add_assert_greater_than(Script, Counter, Limit) :-
+        smt_assert([>, x, Counter], Script),
+        smt_check_sat_continue_if_sat(Script),
+        smt_get_model(Script),
+        NewCounter is Counter + 1,
+        (smt_solve_z3(Script) -> add_assert_greater_than(Script, NewCounter, Limit) ; true).
     
+getValue():-
+    smt_new('getValue', Script),
+    smt_declare_const(x, 'Int', Script),
+    smt_declare_const(y, 'Int', Script),
+    smt_assert([=,y,10], Script),
+    smt_assert([=,y,[*,2,x]], Script),
+    smt_check_sat(Script),
+    smt_get_model(Script),
+    smt_solve_z3(Script),
+    get_last_model_value(x,X,Script),
+    writeln('Value of X:'),
+    write(X),
+    smt_close(Script).

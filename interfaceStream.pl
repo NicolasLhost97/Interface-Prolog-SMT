@@ -56,9 +56,10 @@ model_counter(0).
         % Get the ouput
         read_file(ResultFile, Output),
         % Show result in terminal
+        write('\n───────── Solver\'s Output ─────────\n\n'),
         write(Output),
         smtlib_read_expressions(ResultFile, Expressions),
-        write('\n\n-----------------------\n\n'),
+        write('\n───────────────────────────────────\n\n'),
         extract_funs_from_model_to_constraints(Expressions, ModelConstraints),
         % write('\n\n Constraints'),
         % write(ModelConstraints),
@@ -67,15 +68,20 @@ model_counter(0).
         model_counter(ModelCounter),
         retractall(solve_counter(_)),
         asserta(solve_counter(ModelCounter)),
-        write('\n'),
-        write(Expressions),
         check_continue_conditions(Expressions).
 
+    get_last_model_value(FunName, Value, Stream) :-
+        stream_property(Stream, file_name(FileName)),
+        sub_atom(FileName, 0, _, 5, Name),
+        atom_concat(Name, '.result.smt2', ResultFile),
+        smtlib_read_expressions(ResultFile, Expressions),
+        extract_last_model(Expressions, LastModel),
+        find_value_in_model(FunName, LastModel, Value).
 
 
 
 % UTILS FOR USAGE OF SMT FILES
-
+    % Use the flush_output to write when a command is created (easier to debug)
     smt_write_to_stream(Stream, Command):-
         smtlib_write_to_stream(Stream, Command),
         flush_output(Stream).
@@ -319,7 +325,8 @@ model_counter(0).
     smt_set_option(Option, Bool, Stream) :-
         Command = [reserved('set-option'), keyword(Option), symbol(Bool)],
         smt_write_to_stream(Stream, Command).
-
+    
+    extract_value_from_variable_value([(_, Value)], Value).
 
 
     % Transformation en symbol
@@ -518,6 +525,29 @@ model_counter(0).
         transform_model_symbol_name(Tail, ModelID, TransformedTail).
 
 
+    % Extract last Model
+    extract_last_model(Expressions, LastModel) :-
+        reverse(Expressions, ReversedExpressions),
+        extract_model(ReversedExpressions, LastModel).
+    
+    % Extract Model in expression List
+    extract_model([Model | _], Model) :-
+        is_list(Model),
+        \+ (Model = [symbol(_) | _]),
+        \+ (Model = [string(_) | _]).
+    extract_model([_ | Rest], Model) :-
+        extract_model(Rest, Model).
+    
+    % Find the FunName  in the Model
+    find_value_in_model(FunName, [VarDefinition | _], Value) :-
+        VarDefinition = [_, symbol(FunName), _, _, TypedValue],
+        extract_value(TypedValue, Value).
+    find_value_in_model(FunName, [_ | Rest], Value) :-
+        find_value_in_model(FunName, Rest, Value).
+    
+    % Separate the Value from the functor of the type (e.g., numeral(Value)).
+    extract_value(TypedValue, Value) :-
+        TypedValue =.. [_Type, Value].
     
 % UTILS
     % Transform array [x,y,z] to string "(x y z)"
