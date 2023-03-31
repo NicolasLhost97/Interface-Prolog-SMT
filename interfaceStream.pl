@@ -23,7 +23,8 @@ model_counter(0).
         %concat FileName and extension .smt2
         atom_concat(FileName, '.smt2', File),
         open(File, write, Stream).
-
+    
+    % Close the stream
     smt_close(Stream) :-
         close(Stream).
 
@@ -60,17 +61,18 @@ model_counter(0).
         write(Output),
         smtlib_read_expressions(ResultFile, Expressions),
         write('\n───────────────────────────────────\n\n'),
+        % Extract values wanted from the model and transform then into constraints
         extract_funs_from_model_to_constraints(Expressions, ModelConstraints),
-        % write('\n\n Constraints'),
-        % write(ModelConstraints),
         smtlib_write_to_stream(Stream, list(ModelConstraints)),
         % Set the solve_counter to be equal to the model_counter
         model_counter(ModelCounter),
         retractall(solve_counter(_)),
         asserta(solve_counter(ModelCounter)),
+        % Check if sat/unsat conditions are respected
         check_continue_conditions(Expressions).
 
-    get_last_model_value(FunName, Value, Stream) :-
+    %Permet de récuperer une valeur dans le dernier modèle généré
+    smt_get_last_model_value(FunName, Value, Stream) :-
         stream_property(Stream, file_name(FileName)),
         sub_atom(FileName, 0, _, 5, Name),
         atom_concat(Name, '.result.smt2', ResultFile),
@@ -81,28 +83,28 @@ model_counter(0).
 
 
 % UTILS FOR USAGE OF SMT FILES
-    % Use the flush_output to write when a command is created (easier to debug)
+    % Write the Command to the Stream
+    % Use the flush_output to write when a command is created (easier to debug) but less time efficient
     smt_write_to_stream(Stream, Command):-
         smtlib_write_to_stream(Stream, Command),
         flush_output(Stream).
 
-    % Write the script into a file
-    smt_write_file(File, Script) :-
-        % ecrire dans le fichier file
-        smtlib_write_to_file(File, list(Script)).
-
-    % Load a file to add at the end of an existing script
-    smt_load_file(File, Script, NewScript) :-
-        % lecture du Fichier
-        smtlib_read_script(File, list(SMTLines)),
-        % rajouter le code Prolog
-        append(Script, SMTLines, NewScript).
+    % Load a file to add at the end of the Stream
+    smt_load_file(File, Stream) :-
+        % Transform the file to Commands
+        smtlib_read_script(File, list(Command)),
+        % Write the Commands in the Stream
+        smt_write_to_stream(Stream, list(Command)).
 
     % Directly solve a file
-    % Use Z3 by default (can be change for 'cvc4' or other supported)
+    % Use Z3 by default (can be change for other supported)
     smt_solve_file(File) :-
-        smt_load_file(File, [], Script),
-        smt_solve(Script, 'z3', _).
+        smtlib_read_script(File, list(Command)),
+        sub_atom(File, 0, _, 5, FileName),
+        smt_new(FileName, Stream),
+        smt_write_to_stream(Stream, list(Command)),
+        smt_solve_z3(Stream),
+        smt_close(Stream).
 
     % Read a file and transform it to Atom
     read_file(File, Content) :-
@@ -110,7 +112,6 @@ model_counter(0).
         read_file_stream(ReadStream, Codes),
         close(ReadStream),
         atom_codes(Content, Codes).
-
 
     % Read a stream to a list of character codes
     read_file_stream(Stream, Content) :-
@@ -288,7 +289,8 @@ model_counter(0).
     
     % Prédicat pour générer une commande "get-value"
     smt_get_value(Terms, Stream) :-
-        Command = [reserved('get-value'), Terms],
+        convert_to_symbols(Terms, TermsSymbols),
+        Command = [reserved('get-value'), TermsSymbols],
         smt_write_to_stream(Stream, Command).
 
     % Prédicat pour générer une commande "push"
@@ -328,65 +330,6 @@ model_counter(0).
     
     extract_value_from_variable_value([(_, Value)], Value).
 
-
-    % Transformation en symbol
-    smt_symbol(X, symbol(S)) :- atom(X), !, S = X.
-    smt_symbol(X, X).
-
-    convert_to_symbols([], []).
-    convert_to_symbols([H|T], [symbol(H)|ConvertedT]) :-
-            atomic(H), !,
-            convert_to_symbols(T, ConvertedT).
-    convert_to_symbols([H|T], [ConvertedH|ConvertedT]) :-
-            is_list(H),
-            convert_to_symbols(H, ConvertedH),
-            convert_to_symbols(T, ConvertedT).
-
-
-
-% Easier Assert
-    
-    % Liste des opérateurs supportés
-    operator('+').
-    operator('-').
-    operator('*').
-    operator('/').
-    operator('div').
-    operator('mod').
-
-    % Opérateurs de comparaison
-    operator('>').
-    operator('<').
-    operator('>=').
-    operator('<=').
-
-    % Opérateurs logiques
-    operator('and').
-    operator('or').
-    operator('not').
-    operator('=>').
-    operator('=').
-
-   % Prédicat pour convertir les expressions Prolog en une structure intermédiaire
-    expr_to_struct(X, symbol(X)) :- atom(X).
-    expr_to_struct(X, numeral(X)) :- number(X).
-    expr_to_struct((A, Op, B), struct(Op, SA, SB)) :-
-        operator(Op),
-        expr_to_struct(A, SA),
-        expr_to_struct(B, SB).
-
-    % Prédicat pour convertir une structure intermédiaire en S-expression SMT-LIB2
-    struct_to_sexp(symbol(X), [symbol(X)]).
-    struct_to_sexp(numeral(X), [numeral(X)]).
-    struct_to_sexp(struct(Op, A, B), [symbol(Op), SA, SB]) :-
-        struct_to_sexp(A, SA),
-        struct_to_sexp(B, SB).
-
-    % Prédicat pour ajouter une assertion SMT-LIB2 à partir d'une expression courrante
-    smt_assert_2(Expr, Command) :-
-        expr_to_struct(Expr, Struct),
-        struct_to_sexp(Struct, SExpr),
-        smt_assert(SExpr, Command).
 
 
 % SAT OR UNSAT CHECKING

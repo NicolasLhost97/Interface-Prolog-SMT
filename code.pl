@@ -1,19 +1,5 @@
 :- consult(interfaceStream).
 
-checkParsing() :-
-    smt_new('checkParsing',Script),
-    smt_declare_fun('x', [], 'Int', X),
-    smt_declare_fun('y', [], 'Int', Y),
-    smt_declare_fun('f', ['Int','Int'], 'Int',F),
-    smt_parse('(assert (= (f x y) 10))', Parsed),
-    smt_check_sat(Sat),
-    smt_get_model(Mod),
-    smt_exit(Ex),
-    Script = [X,Y,F,Parsed,Sat,Mod,Ex],
-    smt_solve_cvc4(Script),
-    smt_close(Script).
-    
-
 checkAllParsing() :-
     smt_new('checkAllParsing',Script),
     % Générer les commandes SMT-LIB
@@ -24,11 +10,11 @@ checkAllParsing() :-
     smt_set_option(produce-unsat-assumptions, true, Script),
     smt_set_option(print-success, true, Script),
     smt_declare_sort('S', 0, Script),
-    smt_declare_const('a', 'S', Script),
-    smt_declare_const('x', 'Int', Script),
+    smt_declare_const(a, 'S', Script),
+    smt_declare_const(x, 'Int', Script),
     smt_declare_datatype('DT', [[cons, [hd, 'S'], [tl, 'DT']], [nil]], Script),
-    write('test'),
     smt_declare_datatypes([[list, 0]], [[[cons, [head, 'Int'], [tail, list]], [nil]]], Script),
+    smt_define_funs_rec([[factorial, [[n, 'Int']], 'Int'],[fibonacci, [[n, 'Int']], 'Int']],[[ite, [<=, n, 1], 1, [*, n, [factorial, [-, n, 1]]]],[ite, [<=, n, 1], n, [+, [fibonacci, [-, n, 1]], [fibonacci, [-, n, 2]]]]], Script),
     smt_set_logic('QF_LIA', Script),
     smt_define_sort('MyInt', [], 'Int', Script),
     smt_define_fun(f, [[x, 'Int'], [y, 'Int']], 'Int', ['+', x, y], Script),
@@ -40,12 +26,12 @@ checkAllParsing() :-
     smt_get_unsat_core(Script),
     smt_get_assignment(Script),
     smt_get_unsat_assumptions(Script),
-    smt_get_value([[symbol(f), symbol(1), symbol(2)],symbol(a)], Script),
+    smt_get_value([[f, 1, 2],a], Script),
     smt_get_option(print-success, Script),
     smt_get_info(status, Script),
     smt_push(1, Script),
     smt_pop(1, Script),
-    smt_echo("Hello, world!", Script),
+    smt_echo('Hello, world!', Script),
     smt_reset_assertions(Script),
     smt_exit(Script),
     smt_solve_z3(Script),
@@ -150,3 +136,11 @@ getValue():-
     writeln('Value of X:'),
     write(X),
     smt_close(Script).
+
+testFile():-
+    smt_new('testFile', Script),
+    smt_load_file('getValue.smt2', Script),
+    smt_close(Script).
+
+solveFile():-
+    smt_solve_file('testFile.smt2').
