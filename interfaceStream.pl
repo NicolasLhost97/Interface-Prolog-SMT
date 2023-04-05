@@ -20,13 +20,13 @@ model_counter(0).
 % They retrieve the new script with new constraints from the model if asked
 
     % Create new Stream
-    smt_new(FileName, Stream) :-
+    smt_new_stream(FileName, Stream) :-
         %concat FileName and extension .smt2
         atom_concat(FileName, '.smt2', File),
         open(File, write, Stream).
     
     % Close the stream
-    smt_close(Stream) :-
+    smt_close_stream(Stream) :-
         close(Stream),
         retract(solve_counter(_)),
         asserta(solve_counter(0)),
@@ -39,11 +39,11 @@ model_counter(0).
         smt_set_option('produce-models', 'true', Stream).
 
     % Utilisation du solver Z3 pour la résolution du Script
-    smt_solve_z3(Stream) :-
+    smt_solve_with_z3(Stream) :-
         smt_solve(Stream, 'z3 ', '').
 
     % Utilisation du solver Z3 pour la résolution du Script
-    smt_solve_cvc4(Stream) :-
+    smt_solve_with_cvc4(Stream) :-
         smt_solve(Stream, 'cvc4 ', ' --incremental --fmf-bound ').
         
     % Résolution du Script et avec le Solver choisi
@@ -483,16 +483,22 @@ model_counter(0).
     extract_last_model(Expressions, LastModel) :-
         reverse(Expressions, ReversedExpressions),
         extract_model(ReversedExpressions, LastModel).
+
+    % Remove the symbol(model) added by some solver in the model
+    clean_model([symbol(model) | Rest], CleanModel) :-
+        !, CleanModel = Rest.
+    clean_model(Model, Model).
     
     % Extract Model in expression List
-    extract_model([Model | _], Model) :-
+    extract_model([Model | _], CleanModel) :-
         is_list_ISO(Model),
-        \+ (Model = [symbol(_) | _]),
-        \+ (Model = [string(_) | _]).
+        clean_model(Model, CleanModel),
+        \+ (CleanModel = [symbol(_) | _]),
+        \+ (CleanModel = [string(_) | _]).
     extract_model([_ | Rest], Model) :-
         extract_model(Rest, Model).
     
-    % Find the FunName  in the Model
+    % Find the FunName in the Model
     find_value_in_model(FunName, [VarDefinition | _], Value) :-
         VarDefinition = [_, symbol(FunName), _, _, TypedValue],
         extract_value(TypedValue, Value).

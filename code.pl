@@ -3,7 +3,7 @@
 :- use_module(library(clpfd)).
 
 checkAllParsing :-
-    smt_new('checkAllParsing',Script),
+    smt_new_stream('checkAllParsing',Script),
     % Générer les commandes SMT-LIB
     smt_set_info(status, unknown, Script),
     smt_set_option(interactive-mode, true, Script),
@@ -36,12 +36,12 @@ checkAllParsing :-
     smt_echo('Hello, world!', Script),
     smt_reset_assertions(Script),
     smt_exit(Script),
-    smt_solve_z3(Script),
-    smt_close(Script).
+    smt_solve_with_z3(Script),
+    smt_close_stream(Script).
 
 
 multiplesModelToConstraintCVC4:-
-    smt_new('multiplesModelToConstraint',Script),
+    smt_new_stream('multiplesModelToConstraint',Script),
     smt_cvc4_options(Script),
     %First Solve
     smt_declare_fun('x', [], 'Int', Script),
@@ -52,20 +52,20 @@ multiplesModelToConstraintCVC4:-
     smt_check_sat(Script),
     smt_get_model_to_constraint_for([x,y], Script),
     smt_get_model_to_constraint_for([z], Script),
-    smt_solve_cvc4(Script),
+    smt_solve_with_cvc4(Script),
     % Second Solve
     smt_check_sat(Script),
     smt_get_model_to_constraint_for([x,y,z], Script),
-    smt_solve_cvc4(Script),
+    smt_solve_with_cvc4(Script),
     % Third Solve
     smt_check_sat(Script),
     smt_get_model_to_constraint_for([x,y], Script),
     smt_get_model_to_constraint_for([x,z], Script),
-    smt_solve_cvc4(Script),
-    smt_close(Script).
+    smt_solve_with_cvc4(Script),
+    smt_close_stream(Script).
 
 multiplesModelToConstraintZ3:-
-    smt_new('multiplesModelToConstraint',Script),
+    smt_new_stream('multiplesModelToConstraint',Script),
     %First Solve
     smt_declare_fun('x', [], 'Int', Script),
     smt_declare_fun('y', [], 'Int', Script),
@@ -75,20 +75,20 @@ multiplesModelToConstraintZ3:-
     smt_check_sat(Script),
     smt_get_model_to_constraint_for([x,y], Script),
     smt_get_model_to_constraint_for([z], Script),
-    smt_solve_z3(Script),
+    smt_solve_with_z3(Script),
     % Second Solve
     smt_check_sat(Script),
     smt_get_model_to_constraint_for([x,y,z], Script),
-    smt_solve_z3(Script),
+    smt_solve_with_z3(Script),
     % Third Solve
     smt_check_sat(Script),
     smt_get_model_to_constraint_for([x,y], Script),
     smt_get_model_to_constraint_for([x,z], Script),
-    smt_solve_z3(Script),
-    smt_close(Script).
+    smt_solve_with_z3(Script),
+    smt_close_stream(Script).
 
 testSat :-
-    smt_new('testSat', Script),
+    smt_new_stream('testSat', Script),
     smt_declare_fun('x', [], 'Int', Script),
     smt_declare_fun('y', [], 'Int', Script),
     % X and Y Greater than O
@@ -106,29 +106,29 @@ testSat :-
         smt_check_sat_continue_if_sat(Script),
         smt_get_model(Script),
         NewCounter is Counter + 1,
-        (smt_solve_z3(Script) -> add_assert_greater_than(Script, NewCounter, Limit) ; true).
+        (smt_solve_with_z3(Script) -> add_assert_greater_than(Script, NewCounter, Limit) ; true).
     
 getValue:-
-    smt_new('getValue', Script),
+    smt_new_stream('getValue', Script),
     smt_declare_const(x, 'Int', Script),
     smt_declare_const(y, 'Int', Script),
     smt_assert([=,y,10], Script),
     smt_assert([=,y,[*,2,x]], Script),
     smt_check_sat(Script),
     smt_get_model(Script),
-    smt_solve_z3(Script),
+    smt_solve_with_z3(Script),
     smt_get_last_model_value(x,X,Script),
     write('\nValue of X:'),
     write(X),
-    smt_close(Script).
+    smt_close_stream(Script).
 
 testFile:-
-    smt_new('testFile', Script),
+    smt_new_stream('testFile', Script),
     smt_load_file('getValue.smt2', Script),
-    smt_solve_z3(Script),
-    smt_close(Script).
+    smt_solve_with_z3(Script),
+    smt_close_stream(Script).
 
 solveFile:-
-    smt_solve_file('testFile.smt2').
+    smt_solve_with_file('testFile.smt2').
 
 
