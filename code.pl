@@ -1,6 +1,8 @@
 :- consult(interfaceStream).
+:- use_module(interfaceStream).
+:- use_module(library(clpfd)).
 
-checkAllParsing() :-
+checkAllParsing :-
     smt_new('checkAllParsing',Script),
     % Générer les commandes SMT-LIB
     smt_set_info(status, unknown, Script),
@@ -38,15 +40,7 @@ checkAllParsing() :-
     smt_close(Script).
 
 
-sudoku() :-
-    %charger Fichier Sudoku
-    smt_load_file('smt/test.smt2',[], SudokuScript),
-    write(SudokuScript),
-    smt_solve_cvc4(SudokuScript).
-    %Récuperer les infos dans le sat, rajouter les contraintes et rechecker sat
-
-
-multiplesModelToConstraintCVC4():-
+multiplesModelToConstraintCVC4:-
     smt_new('multiplesModelToConstraint',Script),
     smt_cvc4_options(Script),
     %First Solve
@@ -70,7 +64,7 @@ multiplesModelToConstraintCVC4():-
     smt_solve_cvc4(Script),
     smt_close(Script).
 
-multiplesModelToConstraintZ3():-
+multiplesModelToConstraintZ3:-
     smt_new('multiplesModelToConstraint',Script),
     %First Solve
     smt_declare_fun('x', [], 'Int', Script),
@@ -93,10 +87,10 @@ multiplesModelToConstraintZ3():-
     smt_solve_z3(Script),
     smt_close(Script).
 
-testSat() :-
+testSat :-
     smt_new('testSat', Script),
-    smt_declare_fun(x, [], 'Int', Script),
-    smt_declare_fun(y, [], 'Int', Script),
+    smt_declare_fun('x', [], 'Int', Script),
+    smt_declare_fun('y', [], 'Int', Script),
     % X and Y Greater than O
     smt_assert([>, x, 0], Script),
     smt_assert([>, y, 0], Script),
@@ -104,16 +98,7 @@ testSat() :-
     smt_assert([<, y, 10], Script),
     % Y Greather than X
     smt_assert([>, y, x], Script),
-
-    get_model_value('x', X, Script),
-    get_model_value('y', Y, Script),
-    writeln('\n\n\n\n'),
-    writeln(['x = ', X, ' y = ', Y]),
-    writeln('\n\n\n\n'),
-    smt_exit(Script),
-    smt_solve_z3(Script).
-
-    % add_assert_greater_than(Script, 1, 20).
+    add_assert_greater_than(Script, 1, 20).
 
     add_assert_greater_than(_, Counter, Limit) :- Counter > Limit, !.
     add_assert_greater_than(Script, Counter, Limit) :-
@@ -123,7 +108,7 @@ testSat() :-
         NewCounter is Counter + 1,
         (smt_solve_z3(Script) -> add_assert_greater_than(Script, NewCounter, Limit) ; true).
     
-getValue():-
+getValue:-
     smt_new('getValue', Script),
     smt_declare_const(x, 'Int', Script),
     smt_declare_const(y, 'Int', Script),
@@ -132,15 +117,18 @@ getValue():-
     smt_check_sat(Script),
     smt_get_model(Script),
     smt_solve_z3(Script),
-    get_last_model_value(x,X,Script),
-    writeln('Value of X:'),
+    smt_get_last_model_value(x,X,Script),
+    write('\nValue of X:'),
     write(X),
     smt_close(Script).
 
-testFile():-
+testFile:-
     smt_new('testFile', Script),
     smt_load_file('getValue.smt2', Script),
+    smt_solve_z3(Script),
     smt_close(Script).
 
-solveFile():-
+solveFile:-
     smt_solve_file('testFile.smt2').
+
+

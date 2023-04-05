@@ -5,10 +5,11 @@
 %%%% NQUEEN PROLOG %%%%
 %%%%%%%%%%%%%%%%%%%%%%%
 
-nqueens_prolog(N, Queens) :-
+nqueens_prolog(N) :-
     length(Queens, N),
 	board(Queens, Board, 0, N, _, _),
-	nqueens_prolog(Board, 0, Queens).
+	nqueens_prolog(Board, 0, Queens),
+	print_board(Queens).
 
 board([], [], N, N, _, _).
 board([_|Queens], [Col-Vars|Board], Col0, N, [_|VR], VC) :-
@@ -29,6 +30,25 @@ nqueens_prolog([C|Cs], Row0, [Col|Solution]) :-
 	select(Col-Vars, [C|Cs], Board),
 	arg(Row, Vars, Row-Row),
 	nqueens_prolog(Board, Row, Solution).
+
+print_board(Rows) :-
+	length(Rows, N),
+	print_board_helper(Rows, N, 0).
+
+print_board_helper(_, N, N) :-
+	nl.
+print_board_helper(Rows, N, Row) :-
+	print_row(Rows, N, Row, 0),
+	nl,
+	NextRow is Row + 1,
+	print_board_helper(Rows, N, NextRow).
+
+print_row(_, N, _, N).
+print_row(Rows, N, Row, Col) :-
+	nth0(Row, Rows, QueenCol),
+	(QueenCol =:= Col -> write('Q ') ; write('. ')),
+	NextCol is Col + 1,
+	print_row(Rows, N, Row, NextCol).
 
 % Exemple d'utilisation :
 % ?- nqueens_prolog(8, Q).

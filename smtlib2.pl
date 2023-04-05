@@ -10,24 +10,6 @@
 
 
 
-:- module(smtlib, [
-    % read from file
-    smtlib_read_expression/2,
-    smtlib_read_expressions/2,
-    smtlib_read_theory/2,
-    smtlib_read_logic/2,
-    smtlib_read_script/2,
-    % read from chars
-    smtlib_parse_expression/2,
-    smtlib_parse_expressions/2,
-    smtlib_parse_theory/2,
-    smtlib_parse_logic/2,
-    smtlib_parse_script/2,
-    % write
-    smtlib_write_to_stream/2,
-    smtlib_write_to_file/2
-]).
-
 
 
 /**
@@ -161,12 +143,12 @@ smtlib_write_to_stream(Stream, string(S)) :- !,
     write(Stream, '"'),
     write(Stream, ' ').
 smtlib_write_to_stream(Stream, list(Expr)) :- !,
-    maplist(smtlib_write_to_stream(Stream), Expr).
+    maplist_ISO(smtlib_write_to_stream(Stream), Expr).
 smtlib_write_to_stream(Stream, Expr) :-
-    is_list(Expr), !,
+    is_list_ISO(Expr), !,
     write(Stream, '('),
-    maplist(smtlib_write_to_stream(Stream), Expr),
-    writeln(Stream, ')').
+    maplist_ISO(smtlib_write_to_stream(Stream), Expr),
+    writeln_ISO(Stream, ')').
 
 % smtlib_write_to_file/2
 % smtlib_write_to_file(+Path, +SMTLIB)
@@ -314,7 +296,7 @@ symbol_chars([]) --> [].
 
 quoted_symbol(symbol(Y)) --> ['|'], quoted_symbol_chars(X), ['|'], {atom_chars(Y, X)}, whitespaces.
 
-quoted_symbol_chars([X|Xs]) --> printable_character(X), {X \= '|', X \= '\\'}, !, quoted_symbol_chars(Xs).
+quoted_symbol_chars([X|Xs]) --> printable_character(X), {X \= ('|'), X \= ('\\')}, !, quoted_symbol_chars(Xs).
 quoted_symbol_chars([X|Xs]) --> [X], {member(X, [' ','\n','\r','\t'])}, !, quoted_symbol_chars(Xs).
 quoted_symbol_chars([]) --> [].
 
@@ -562,3 +544,18 @@ option([X]) --> attribute(X).
 % usage and semantics.
 info_flag(keyword(X)) --> keyword(keyword(X)), {member(X,['error-behavior',name,authors,version,'reason-unknown','all-statistics','assertion-stack-lavels'])}, !.
 info_flag(X) --> keyword(X).
+
+
+maplist_ISO(_, []).
+maplist_ISO(Goal, [H|T]) :-
+    arg(1, Goal, Stream),
+    GoalWithArg =.. [smtlib_write_to_stream, Stream, H],
+    call(GoalWithArg),
+    maplist_ISO(Goal, T).
+
+is_list_ISO(X) :- nonvar(X), X = [].
+is_list_ISO(X) :- nonvar(X), X = [_|_].
+
+writeln_ISO(Stream, Text) :-
+    write(Stream, Text),
+    nl(Stream).

@@ -1,10 +1,11 @@
-:- use_module(library(smtlib)).
-:- use_module(library(readutil)).
+:- consult(smtlib2).
+:- use_module(smtlib2).
+:- use_module(library(iso_incomplete)). %Has to be used with CIAO Prolog
 
-:- dynamic solve_counter/1.
+:- dynamic(solve_counter/1).
 solve_counter(0).
 
-:- dynamic model_counter/1.
+:- dynamic(model_counter/1).
 model_counter(0).
 
 
@@ -26,7 +27,11 @@ model_counter(0).
     
     % Close the stream
     smt_close(Stream) :-
-        close(Stream).
+        close(Stream),
+        retract(solve_counter(_)),
+        asserta(solve_counter(0)),
+        retract(model_counter(_)),
+        asserta(model_counter(0)).
 
     % Options to add at the begining to avoid warning from CVC4
     smt_cvc4_options(Stream) :-
@@ -144,12 +149,14 @@ model_counter(0).
 
     % Prédicat pour générer une commande "check-sat" et vérifier si sat
     smt_check_sat_continue_if_sat(Stream) :-
-        writeln(Stream, '(echo "continue-if-sat")'),
+        write(Stream, '(echo "continue-if-sat")'),
+        nl(Stream),
         smt_check_sat(Stream).
     
     % Prédicat pour générer une commande "check-sat" et vérifier si unsat
     smt_check_sat_continue_if_unsat(Stream) :-
-        writeln(Stream, '(echo "continue-if-unsat")'),
+        write(Stream, '(echo "continue-if-unsat")'),
+        nl(Stream),
         smt_check_sat(Stream).
     
 
@@ -159,7 +166,7 @@ model_counter(0).
         smt_write_to_stream(Stream, Command).
 
     % Prédicat pour générer une commande "declare-const"
-    % Example: smt_declare_fun('w', 'Int', Stream)
+    % Example: smt_const(w, 'Int', Stream)
     smt_declare_const(Name, Sort, Stream) :-
         Command = [reserved('declare-const'), symbol(Name), symbol(Sort)],
         smt_write_to_stream(Stream, Command).
@@ -251,19 +258,21 @@ model_counter(0).
         retract(model_counter(Counter)),
         NewCounter is Counter + 1,
         asserta(model_counter(NewCounter)),
-    
-        atom_concat('(echo "model-to-constraint-start-', NewCounter, TempStartTag),
+        number_chars(NewCounter, NewCounterChars),        
+        atom_chars(NewCounterAtom, NewCounterChars),
+
+        atom_concat('(echo "model-to-constraint-start-', NewCounterAtom, TempStartTag),
         atom_concat(TempStartTag, '") ; used to indentify the model coverted to constraints', FinalStartTag),
         smt_parse(FinalStartTag, Stream),
 
         list_symbols_to_string(Symbols, SymbolsString),
-        string_concat('(echo "', SymbolsString, Begining),
-        string_concat(Begining, '") ; symbols coverted to constraints', SymbolsCommand),
+        atom_concat('(echo "', SymbolsString, Begining),
+        atom_concat(Begining, '") ; symbols coverted to constraints', SymbolsCommand),
         smt_parse(SymbolsCommand, Stream),
 
         smtlib_write_to_stream(Stream, [reserved('get-model')]),
 
-        atom_concat('(echo "model-to-constraint-end-', NewCounter, TempEndTag),
+        atom_concat('(echo "model-to-constraint-end-', NewCounterAtom, TempEndTag),
         atom_concat(TempEndTag, '") ; used to indentify the model coverted to constraints', FinalEndTag),
         smt_parse(FinalEndTag, Stream).
 
@@ -423,16 +432,18 @@ model_counter(0).
     
     % Normalise Constraint symbols to the form: [symbol(x),symbol(y)]
     normalize_constraint_symbols(string(Str), Symbols) :-
-        atom_concat('(', WithoutLeftParenthesis, Str),
-        atom_concat(WithoutSpaces, ')', WithoutLeftParenthesis),
-        atomic_list_concat(Atoms, ' ', WithoutSpaces),
-        maplist(atom_to_symbol, Atoms, Symbols).
+        atom_chars(Str, Chars),
+        remove_parentheses(Chars, WithoutParentheses),
+        split_by_space(WithoutParentheses, Atoms),
+        map_atoms_to_symbols(Atoms, Symbols).
     normalize_constraint_symbols(Symbols, Symbols) :-
-        is_list(Symbols),
-        maplist(symbol, Symbols).
-    
-    atom_to_symbol(Atom, symbol(Atom)).
-    
+        is_list_ISO(Symbols),
+        map_atoms_to_symbols(Symbols, Symbols).
+
+    % Map a list of atoms to a list of symbols
+    map_atoms_to_symbols([], []).
+    map_atoms_to_symbols([Atom|Atoms], [symbol(Atom)|Symbols]) :-
+        map_atoms_to_symbols(Atoms, Symbols).
     
         
     % Selection des Funs voulues pour devenir des contraintes.
@@ -475,7 +486,7 @@ model_counter(0).
     
     % Extract Model in expression List
     extract_model([Model | _], Model) :-
-        is_list(Model),
+        is_list_ISO(Model),
         \+ (Model = [symbol(_) | _]),
         \+ (Model = [string(_) | _]).
     extract_model([_ | Rest], Model) :-
@@ -496,22 +507,26 @@ model_counter(0).
     % Transform array [x,y,z] to string "(x y z)"
     list_symbols_to_string(List, Result) :-
         symbols_to_string(List, InnerResult),
-        string_concat('(', InnerResult, TempResult),
-        string_concat(TempResult, ')', Result).
+        atom_concat('(', InnerResult, TempResult),
+        atom_concat(TempResult, ')', Result).
 
     symbols_to_string([], '').
     symbols_to_string([Symbol], String) :-
-        term_string(Symbol, String).
+        term_to_string(Symbol, String).
     symbols_to_string([Symbol|Rest], Result) :-
-        term_string(Symbol, SymbolString),
+        term_to_string(Symbol, SymbolString),
         symbols_to_string(Rest, RestString),
-        string_concat(SymbolString, ' ', TempResult),
-        string_concat(TempResult, RestString, Result).
+        atom_concat(SymbolString, ' ', TempResult),
+        atom_concat(TempResult, RestString, Result).
+
+    term_to_string(Term, String) :-
+        term_to_string_helper(Term, Chars),
+        atom_chars(String, Chars).        
 
      % Transform string "[x,y]" to array [x,y]
      string_to_list_symbols(String, List) :-
-        string_concat('(', Rest, String),
-        string_concat(SymbolsString, ')', Rest),
+        atom_concat('(', Rest, String),
+        atom_concat(SymbolsString, ')', Rest),
         read_term(SymbolsString, List, [syntax_errors(quiet)]).
 
     % Convert an atom to a number
@@ -524,3 +539,59 @@ model_counter(0).
         number_chars(Number, Chars),
         atom_chars(Atom, Chars).
 
+    % Transformation en symbol
+    smt_symbol(X, symbol(S)) :- atom(X), !, S = X.
+    smt_symbol(X, X).
+
+    convert_to_symbols([], []).
+    convert_to_symbols([H|T], [symbol(H)|ConvertedT]) :-
+            atomic(H), !,
+            convert_to_symbols(T, ConvertedT).
+    convert_to_symbols([H|T], [ConvertedH|ConvertedT]) :-
+            is_list_ISO(H),
+            convert_to_symbols(H, ConvertedH),
+            convert_to_symbols(T, ConvertedT).
+
+    %is_list
+    is_list_ISO(X) :- nonvar(X), X = [].
+    is_list_ISO(X) :- nonvar(X), X = [_|_].
+
+
+    term_to_string_helper(Var, Chars) :-
+        var(Var), !,
+        atom_chars(Var, Chars).
+    term_to_string_helper(Atom, Chars) :-
+        atom(Atom), !,
+        atom_chars(Atom, Chars).
+    term_to_string_helper(Number, Chars) :-
+        number(Number), !,
+        number_chars(Number, Chars).
+    term_to_string_helper(Compound, Chars) :-
+        compound(Compound),
+        Compound =.. [Functor|Args],
+        term_to_string_helper(Functor, FunctorChars),
+        term_to_string_list(Args, ArgsChars),
+        append(FunctorChars, ArgsChars, Chars).
+    
+    term_to_string_list([], []).
+    term_to_string_list([H|T], Chars) :-
+        term_to_string_helper(H, HChars),
+        term_to_string_list(T, TChars),
+        append(HChars, TChars, Chars).
+
+    % Remove the opening and closing parentheses
+    remove_parentheses(['('|T], WithoutParentheses) :-
+        reverse(T, [_|ReversedWithoutClosing]),
+        reverse(ReversedWithoutClosing, WithoutParentheses).
+
+    % Split a list of characters by spaces
+    split_by_space(Chars, Atoms) :-
+        split_by_space_helper(Chars, [], Atoms).
+
+    split_by_space_helper([], Current, [Atom]) :-
+        atom_chars(Atom, Current).
+    split_by_space_helper([' '|T], Current, [Atom|Rest]) :-
+        atom_chars(Atom, Current),
+        split_by_space_helper(T, [], Rest).
+    split_by_space_helper([H|T], Current, Atoms) :-
+        split_by_space_helper(T, [H|Current], Atoms).
