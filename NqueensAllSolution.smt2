@@ -1,12 +1,12 @@
-(declare-fun r0 ()
-Int )
-(declare-fun r1 ()
-Int )
-(declare-fun r2 ()
+(declare-fun r4 ()
 Int )
 (declare-fun r3 ()
 Int )
-(declare-fun r4 ()
+(declare-fun r2 ()
+Int )
+(declare-fun r1 ()
+Int )
+(declare-fun r0 ()
 Int )
 (assert (and (>= r0 0 )
 (< r0 5 )
@@ -75,10 +75,10 @@ Bool (= (abs (- x1 x2 )
 (check-sat )
 (echo "continue-if-sat")
 (check-sat )
-(echo "model-to-constraint-start-1") ; used to indentify the model coverted to constraints
-(echo "(r0 r1 r2 r3 r4)") ; symbols coverted to constraints
+(echo "model-to-constraint-start-1") ; used to indentify the model converted to constraints
+(echo "(r0 r1 r2 r3 r4)") ; symbols converted to constraints
 (get-model )
-(echo "model-to-constraint-end-1") ; used to indentify the model coverted to constraints
+(echo "model-to-constraint-end-1") ; used to indentify the model converted to constraints
 (define-fun r0_from_model_1 ()
 Int 3 )
 (define-fun r1_from_model_1 ()
@@ -105,10 +105,10 @@ Int 0 )
 (check-sat )
 (echo "continue-if-sat")
 (check-sat )
-(echo "model-to-constraint-start-2") ; used to indentify the model coverted to constraints
-(echo "(r0 r1 r2 r3 r4)") ; symbols coverted to constraints
+(echo "model-to-constraint-start-2") ; used to indentify the model converted to constraints
+(echo "(r0 r1 r2 r3 r4)") ; symbols converted to constraints
 (get-model )
-(echo "model-to-constraint-end-2") ; used to indentify the model coverted to constraints
+(echo "model-to-constraint-end-2") ; used to indentify the model converted to constraints
 (define-fun r0_from_model_2 ()
 Int 2 )
 (define-fun r1_from_model_2 ()
@@ -135,10 +135,10 @@ Int 4 )
 (check-sat )
 (echo "continue-if-sat")
 (check-sat )
-(echo "model-to-constraint-start-3") ; used to indentify the model coverted to constraints
-(echo "(r0 r1 r2 r3 r4)") ; symbols coverted to constraints
+(echo "model-to-constraint-start-3") ; used to indentify the model converted to constraints
+(echo "(r0 r1 r2 r3 r4)") ; symbols converted to constraints
 (get-model )
-(echo "model-to-constraint-end-3") ; used to indentify the model coverted to constraints
+(echo "model-to-constraint-end-3") ; used to indentify the model converted to constraints
 (define-fun r0_from_model_3 ()
 Int 1 )
 (define-fun r1_from_model_3 ()
@@ -165,10 +165,10 @@ Int 3 )
 (check-sat )
 (echo "continue-if-sat")
 (check-sat )
-(echo "model-to-constraint-start-4") ; used to indentify the model coverted to constraints
-(echo "(r0 r1 r2 r3 r4)") ; symbols coverted to constraints
+(echo "model-to-constraint-start-4") ; used to indentify the model converted to constraints
+(echo "(r0 r1 r2 r3 r4)") ; symbols converted to constraints
 (get-model )
-(echo "model-to-constraint-end-4") ; used to indentify the model coverted to constraints
+(echo "model-to-constraint-end-4") ; used to indentify the model converted to constraints
 (define-fun r0_from_model_4 ()
 Int 0 )
 (define-fun r1_from_model_4 ()
@@ -195,10 +195,10 @@ Int 2 )
 (check-sat )
 (echo "continue-if-sat")
 (check-sat )
-(echo "model-to-constraint-start-5") ; used to indentify the model coverted to constraints
-(echo "(r0 r1 r2 r3 r4)") ; symbols coverted to constraints
+(echo "model-to-constraint-start-5") ; used to indentify the model converted to constraints
+(echo "(r0 r1 r2 r3 r4)") ; symbols converted to constraints
 (get-model )
-(echo "model-to-constraint-end-5") ; used to indentify the model coverted to constraints
+(echo "model-to-constraint-end-5") ; used to indentify the model converted to constraints
 (define-fun r0_from_model_5 ()
 Int 0 )
 (define-fun r1_from_model_5 ()
@@ -225,20 +225,20 @@ Int 3 )
 (check-sat )
 (echo "continue-if-sat")
 (check-sat )
-(echo "model-to-constraint-start-6") ; used to indentify the model coverted to constraints
-(echo "(r0 r1 r2 r3 r4)") ; symbols coverted to constraints
+(echo "model-to-constraint-start-6") ; used to indentify the model converted to constraints
+(echo "(r0 r1 r2 r3 r4)") ; symbols converted to constraints
 (get-model )
-(echo "model-to-constraint-end-6") ; used to indentify the model coverted to constraints
+(echo "model-to-constraint-end-6") ; used to indentify the model converted to constraints
 (define-fun r0_from_model_6 ()
-Int 1 )
-(define-fun r1_from_model_6 ()
 Int 3 )
-(define-fun r3_from_model_6 ()
-Int 2 )
-(define-fun r2_from_model_6 ()
+(define-fun r1_from_model_6 ()
 Int 0 )
-(define-fun r4_from_model_6 ()
+(define-fun r3_from_model_6 ()
 Int 4 )
+(define-fun r2_from_model_6 ()
+Int 2 )
+(define-fun r4_from_model_6 ()
+Int 1 )
 (assert (or (not (= r0 r0_from_model_6 )
 )
 (not (= r1 r1_from_model_6 )
@@ -255,18 +255,18 @@ Int 4 )
 (check-sat )
 (echo "continue-if-sat")
 (check-sat )
-(echo "model-to-constraint-start-7") ; used to indentify the model coverted to constraints
-(echo "(r0 r1 r2 r3 r4)") ; symbols coverted to constraints
+(echo "model-to-constraint-start-7") ; used to indentify the model converted to constraints
+(echo "(r0 r1 r2 r3 r4)") ; symbols converted to constraints
 (get-model )
-(echo "model-to-constraint-end-7") ; used to indentify the model coverted to constraints
+(echo "model-to-constraint-end-7") ; used to indentify the model converted to constraints
 (define-fun r0_from_model_7 ()
-Int 3 )
-(define-fun r1_from_model_7 ()
-Int 0 )
-(define-fun r3_from_model_7 ()
 Int 4 )
-(define-fun r2_from_model_7 ()
+(define-fun r1_from_model_7 ()
 Int 2 )
+(define-fun r3_from_model_7 ()
+Int 3 )
+(define-fun r2_from_model_7 ()
+Int 0 )
 (define-fun r4_from_model_7 ()
 Int 1 )
 (assert (or (not (= r0 r0_from_model_7 )
@@ -285,10 +285,10 @@ Int 1 )
 (check-sat )
 (echo "continue-if-sat")
 (check-sat )
-(echo "model-to-constraint-start-8") ; used to indentify the model coverted to constraints
-(echo "(r0 r1 r2 r3 r4)") ; symbols coverted to constraints
+(echo "model-to-constraint-start-8") ; used to indentify the model converted to constraints
+(echo "(r0 r1 r2 r3 r4)") ; symbols converted to constraints
 (get-model )
-(echo "model-to-constraint-end-8") ; used to indentify the model coverted to constraints
+(echo "model-to-constraint-end-8") ; used to indentify the model converted to constraints
 (define-fun r0_from_model_8 ()
 Int 2 )
 (define-fun r1_from_model_8 ()
@@ -315,20 +315,20 @@ Int 0 )
 (check-sat )
 (echo "continue-if-sat")
 (check-sat )
-(echo "model-to-constraint-start-9") ; used to indentify the model coverted to constraints
-(echo "(r0 r1 r2 r3 r4)") ; symbols coverted to constraints
+(echo "model-to-constraint-start-9") ; used to indentify the model converted to constraints
+(echo "(r0 r1 r2 r3 r4)") ; symbols converted to constraints
 (get-model )
-(echo "model-to-constraint-end-9") ; used to indentify the model coverted to constraints
+(echo "model-to-constraint-end-9") ; used to indentify the model converted to constraints
 (define-fun r0_from_model_9 ()
 Int 4 )
 (define-fun r1_from_model_9 ()
-Int 2 )
-(define-fun r3_from_model_9 ()
-Int 3 )
-(define-fun r2_from_model_9 ()
-Int 0 )
-(define-fun r4_from_model_9 ()
 Int 1 )
+(define-fun r3_from_model_9 ()
+Int 0 )
+(define-fun r2_from_model_9 ()
+Int 3 )
+(define-fun r4_from_model_9 ()
+Int 2 )
 (assert (or (not (= r0 r0_from_model_9 )
 )
 (not (= r1 r1_from_model_9 )
@@ -345,20 +345,20 @@ Int 1 )
 (check-sat )
 (echo "continue-if-sat")
 (check-sat )
-(echo "model-to-constraint-start-10") ; used to indentify the model coverted to constraints
-(echo "(r0 r1 r2 r3 r4)") ; symbols coverted to constraints
+(echo "model-to-constraint-start-10") ; used to indentify the model converted to constraints
+(echo "(r0 r1 r2 r3 r4)") ; symbols converted to constraints
 (get-model )
-(echo "model-to-constraint-end-10") ; used to indentify the model coverted to constraints
+(echo "model-to-constraint-end-10") ; used to indentify the model converted to constraints
 (define-fun r0_from_model_10 ()
-Int 4 )
-(define-fun r1_from_model_10 ()
 Int 1 )
-(define-fun r3_from_model_10 ()
-Int 0 )
-(define-fun r2_from_model_10 ()
+(define-fun r1_from_model_10 ()
 Int 3 )
-(define-fun r4_from_model_10 ()
+(define-fun r3_from_model_10 ()
 Int 2 )
+(define-fun r2_from_model_10 ()
+Int 0 )
+(define-fun r4_from_model_10 ()
+Int 4 )
 (assert (or (not (= r0 r0_from_model_10 )
 )
 (not (= r1 r1_from_model_10 )
@@ -375,7 +375,7 @@ Int 2 )
 (check-sat )
 (echo "continue-if-sat")
 (check-sat )
-(echo "model-to-constraint-start-11") ; used to indentify the model coverted to constraints
-(echo "(r0 r1 r2 r3 r4)") ; symbols coverted to constraints
+(echo "model-to-constraint-start-11") ; used to indentify the model converted to constraints
+(echo "(r0 r1 r2 r3 r4)") ; symbols converted to constraints
 (get-model )
-(echo "model-to-constraint-end-11") ; used to indentify the model coverted to constraints
+(echo "model-to-constraint-end-11") ; used to indentify the model converted to constraints

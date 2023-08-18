@@ -1,10 +1,10 @@
-:- consult(interfaceStream).
+:- consult(interface).
 :- use_module(library(clpfd)).
 
 queens(N):-
     smt_new_stream('Nqueens', Script),
     queens_declaration(N, Script),
-    queens_on_board(N, Script),
+    queens_on_board(0, N, Script),
     queens_not_same_row(N, Script),
     smt_define_fun('diagonal-threat', [['x1','Int'], ['y1','Int'], ['x2','Int'], ['y2','Int']], 'Bool',
             [=, [abs, [-, 'x1', 'x2']], [abs, [-, 'y1', 'y2']]], Script),
@@ -18,23 +18,35 @@ queens(N):-
     smt_close_stream(Script).
 
 
+queensAllSolutions(N):-
+    smt_new_stream('NqueensAllSolution', Script),
+    queens_declaration(N, Script),
+    queens_on_board(0, N, Script),
+    queens_not_same_row(N, Script),
+    smt_define_fun('diagonal-threat', [['x1','Int'], ['y1','Int'], ['x2','Int'], ['y2','Int']], 'Bool',
+            [=, [abs, [-, 'x1', 'x2']], [abs, [-, 'y1', 'y2']]], Script),
+    queens_not_same_diagonal(N, 0, Script),
+    allrows(N, Rows),
+    getAllSolutions(Script, N, Rows, [], Solutions),
+    writeAllSolutions(Solutions),
+    smt_close_stream(Script).
+
+    
     % Declaration of queens
+    queens_declaration(0, _).
     queens_declaration(N, Script) :-
         succ(PrecN, N),
-        forall(between(0, PrecN, I),
-            (   atom_concat('r', I, VarName),
-                smt_declare_fun(VarName, [], 'Int', Script)
-            )
-        ).
+        atom_concat('r', PrecN, VarName),
+        smt_declare_fun(VarName, [], 'Int', Script),
+        queens_declaration(PrecN, Script).
 
     % Rule to have queens inside the limits
-    queens_on_board(N, Script) :-
-        succ(PrecN, N),
-        forall(between(0, PrecN, I),
-            (   atom_concat('r', I, VarName),
-                smt_assert([and,[>=, VarName, 0],[<, VarName, N]], Script)
-            )
-        ).
+    queens_on_board(N, N, _).
+    queens_on_board(I, N, Script) :-
+        atom_concat('r', I, VarName),
+        smt_assert([and,[>=, VarName, 0],[<, VarName, N]], Script),
+        succ(I, NextI),
+        queens_on_board(NextI, N, Script).
 
     % Rule to avoid queens in same row
     queens_not_same_row(N, Script) :-
@@ -70,27 +82,6 @@ queens(N):-
         smt_get_last_model_value(Var, Value, Script),
         I1 is I + 1,
         queens_get_solution(Script, N, I1, Rest).
-        
-    %Print the board
-    print_board(Rows) :-
-        length(Rows, N),
-        print_board_helper(Rows, N, 0).
-    
-    print_board_helper(_, N, N) :-
-        nl.
-    print_board_helper(Rows, N, Row) :-
-        print_row(Rows, N, Row, 0),
-        nl,
-        NextRow is Row + 1,
-        print_board_helper(Rows, N, NextRow).
-    
-    print_row(_, N, _, N).
-    print_row(Rows, N, Row, Col) :-
-        nth0(Row, Rows, QueenCol),
-        (QueenCol =:= Col -> write('Q ') ; write('. ')),
-        NextCol is Col + 1,
-        print_row(Rows, N, Row, NextCol).
-
 
     %Check if the solution is valid
     valid_solution(Queens, N) :-
@@ -122,25 +113,10 @@ queens(N):-
             NewDist is Dist + 1,
             valid_diagonal(Q, Rest, NewDist).
 
-
-
-queensAllSolutions(N):-
-    smt_new_stream('NqueensAllSolution', Script),
-    queens_declaration(N, Script),
-    queens_on_board(N, Script),
-    queens_not_same_row(N, Script),
-    smt_define_fun('diagonal-threat', [['x1','Int'], ['y1','Int'], ['x2','Int'], ['y2','Int']], 'Bool',
-            [=, [abs, [-, 'x1', 'x2']], [abs, [-, 'y1', 'y2']]], Script),
-    queens_not_same_diagonal(N, 0, Script),
-    allrows(N, Rows),
-    getAllSolutions(Script, N, Rows, [], Solutions),
-    writeAllSolutions(Solutions),
-    smt_close_stream(Script).
-
     
+    % Loop until all solutions are found
     getAllSolutions(Script, _, _, Solutions, Solutions) :-
         \+ smt_check_sat_continue_if_sat(Script).
-    
     getAllSolutions(Script, N, Rows, Acc, Solutions) :-
         smt_check_sat_continue_if_sat(Script),
         smt_get_model_to_constraint_for(Rows, Script),
@@ -151,17 +127,64 @@ queensAllSolutions(N):-
         ;
             Solutions = Acc
         ).
-        
+
+    % List all N rows    
     allrows(N, Rows) :-
         succ(PrecN,N),
         numlist(0, PrecN, NumList),
         maplist(row_var, NumList, Rows).
-    
     row_var(N, RowVar) :-
         atom_concat('r', N, RowVar).
                 
+    % Write all solutions
     writeAllSolutions([]).
     writeAllSolutions([Solution | Rest]) :-
         writeln(Solution),
+        print_board(Solution),
         writeAllSolutions(Rest).
         
+      
+    %Print the board
+    print_board(Rows) :-
+        length(Rows, N),
+        print_board_helper(Rows, N, 0).
+    
+    print_board_helper(_, N, N) :-
+        nl.
+    print_board_helper(Rows, N, Row) :-
+        print_row(Rows, N, Row, 0),
+        nl,
+        NextRow is Row + 1,
+        print_board_helper(Rows, N, NextRow).
+    
+    print_row(_, N, _, N).
+    print_row(Rows, N, Row, Col) :-
+        nth0(Row, Rows, QueenCol),
+        (QueenCol =:= Col -> write('Q ') ; write('. ')),
+        NextCol is Col + 1,
+        print_row(Rows, N, Row, NextCol).
+
+
+
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%
+%%%% NQUEEN PROLOG %%%%
+%%%%%%%%%%%%%%%%%%%%%%%
+
+n_queens(N, Qs) :-
+    length(Qs, N),
+    Qs ins 1..N,
+    safe_queens(Qs).
+
+safe_queens([]).
+safe_queens([Q|Qs]) :- safe_queens(Qs, Q, 1), safe_queens(Qs).
+
+safe_queens([], _, _).
+safe_queens([Q|Qs], Q0, D0) :-
+    Q0 #\= Q,
+    abs(Q0 - Q) #\= D0,
+    D1 #= D0 + 1,
+    safe_queens(Qs, Q0, D1).

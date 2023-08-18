@@ -1,5 +1,4 @@
-:- consult(interfaceStream).
-:- use_module(interfaceStream).
+:- consult(interface).
 :- use_module(library(clpfd)).
 
 checkAllParsing :-
@@ -87,26 +86,24 @@ multiplesModelToConstraintZ3:-
     smt_solve_with_z3(Script),
     smt_close_stream(Script).
 
-testSat :-
-    smt_new_stream('testSat', Script),
+get_all_sums(N) :-
+    smt_new_stream('getSums', Script),
+    smt_cvc4_options(Script),
     smt_declare_fun('x', [], 'Int', Script),
     smt_declare_fun('y', [], 'Int', Script),
-    % X and Y Greater than O
-    smt_assert([>, x, 0], Script),
-    smt_assert([>, y, 0], Script),
-    % Y Less than O
-    smt_assert([<, y, 10], Script),
-    % Y Greather than X
-    smt_assert([>, y, x], Script),
-    add_assert_greater_than(Script, 1, 20).
-
-    add_assert_greater_than(_, Counter, Limit) :- Counter > Limit, !.
-    add_assert_greater_than(Script, Counter, Limit) :-
-        smt_assert([>, x, Counter], Script),
+    % X and Y Greater than 0
+    smt_assert([>=, x, 0], Script),
+    smt_assert([>=, y, 0], Script),
+    % Y + X = N
+    smt_assert([=, N, [+, x, y]], Script),
+    get_sums(Script),
+    smt_close_stream(Script).
+    
+    get_sums(Script) :-
         smt_check_sat_continue_if_sat(Script),
-        smt_get_model(Script),
-        NewCounter is Counter + 1,
-        (smt_solve_with_z3(Script) -> add_assert_greater_than(Script, NewCounter, Limit) ; true).
+        smt_get_model_to_constraint_for([x,y], Script),
+        (smt_solve_with_yices(Script) -> get_sums(Script) ; true).
+
     
 getValue:-
     smt_new_stream('getValue', Script),
@@ -132,3 +129,46 @@ solveFile:-
     smt_solve_with_file('testFile.smt2').
 
 
+
+testMemoire:-
+    % Creation du stream et d'un fichier "task_exemple.smt2" pour y mettre le script
+    smt_new_stream(task_exemple, Stream),
+
+    % Declaration des variables (representant le début de chaque tache)
+    smt_declare_const( startT1, 'Int', Stream),
+    smt_declare_const( startT2, 'Int', Stream),
+    smt_declare_const( startT3, 'Int', Stream),
+    smt_declare_const( startT4, 'Int', Stream),
+
+    % Declaration des durees des taches
+    smt_define_fun(durationT1, [], 'Int', [3], Stream),
+    smt_define_fun(durationT2, [], 'Int', [2], Stream),
+    smt_define_fun(durationT3, [], 'Int', [4], Stream),
+    smt_define_fun(durationT3, [], 'Int', [6], Stream),
+
+    % Contrainte : T1 doit commencer au temps 0
+    smt_assert([=, startT1, 0], Stream),
+
+    % Contrainte : T2 ne peut pas commencer avant la fin de T1
+    smt_assert([>=, startT2, [+, startT1, durationT1]], Stream),
+
+    % Contrainte : T3 et T4 ne peuvent pas commencer avant la fin de T2
+    smt_assert([>=, startT3, [+, startT2, durationT2]], Stream),
+    smt_assert([>=, startT4, [+, startT2, durationT2]], Stream),
+
+    % Objectif : minimiser le temps d'achevement total
+    smt_define_fun(endT3, [], 'Int', [+, startT3, durationT3], Stream),
+    smt_define_fun(endT4, [], 'Int', [+, startT4, durationT4], Stream),
+    smt_declare_const(endMax, 'Int', Stream),
+
+    smt_assert([>=, endMax, endT3], Stream),
+    smt_assert([>=, endMax, endT4], Stream),
+    smt_assert([or, [=, endMax, endT3], [=, endMax, endT4]], Stream),
+
+    smt_parse('(minimize endMax)', Stream),
+
+    smt_check_sat(Stream),
+    smt_get_value([endMax], Stream),
+
+    % Fermeture du Script
+    smt_close_stream(Stream).
