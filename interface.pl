@@ -1,5 +1,5 @@
 
-:- consult(smtlib_iso). %Place 
+:- consult(smtlib_iso). % Load the smtlib module with ISO modifications 
 
 %:- use_module(library(iso_incomplete)). %If using with CIAO Prolog
 
@@ -10,7 +10,7 @@ model_counter(0).
 
 
 % INTERACTIONS WITH SMT SOLVERS
-% smt_solve_z3 and smt_solve_cvc4 to use a specific solver to resolve the script
+% smt_solve_with_z3, smt_solve_with_cvc4 and smt_solve_with_yices to use a specific solver to resolve the script
 % They retrieve the new script with new constraints from the model if asked
 
     % Create new Stream

@@ -10,6 +10,24 @@
 
 
 
+% :- module(smtlib, [
+%     % read from file
+%     smtlib_read_expression/2,
+%     smtlib_read_expressions/2,
+%     smtlib_read_theory/2,
+%     smtlib_read_logic/2,
+%     smtlib_read_script/2,
+%     % read from chars
+%     smtlib_parse_expression/2,
+%     smtlib_parse_expressions/2,
+%     smtlib_parse_theory/2,
+%     smtlib_parse_logic/2,
+%     smtlib_parse_script/2,
+%     % write
+%     smtlib_write_to_stream/2,
+%     smtlib_write_to_file/2
+% ]).
+
 
 
 /**
